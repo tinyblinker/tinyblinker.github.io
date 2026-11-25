@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>linux脚本技巧大全_bash_by_example</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-11-21 Sat 17:32</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">linux脚本技巧大全_bash_by_example</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#orgca0a9a5">1. A little thought of them</a></li>
+<li><a href="#org9905e4b">2. Intro</a></li>
+<li><a href="#org79f6de5">3. awk</a></li>
+<li><a href="#orge8f9d75">4. sed</a></li>
+<li><a href="#orgf05493a">5. find</a></li>
+<li><a href="#orga96d21a">6. grep</a></li>
+<li><a href="#org12d5c27">7. nohup</a></li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-orgca0a9a5" class="outline-2">
+<h2 id="orgca0a9a5"><span class="section-number-2">1.</span> A little thought of them</h2>
+<div class="outline-text-2" id="text-1">
+<ul class="org-ul">
+<li>linux cli工具的本质不在于你记住她们的每一个选项,而只需要知道这个工具"为了什么经典问题"而设计,<br>
+"最典型"的使用方法是怎么样的,用有限可控的心智模型去理解她们,并强迫自己用无补全无提示的裸bash天<br>
+天书写她们,于是心智模型得以建立,那些看起来令人眼花缭乱的cli参数也会因为心智模型的建立而自然而然<br>
+地被在正确的场合以恰到好处的心流模式被想起,被尽可能多地统一在一个心智模型中.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org9905e4b" class="outline-2">
+<h2 id="org9905e4b"><span class="section-number-2">2.</span> Intro</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+Like 'Rust by example',I always thought of that learning by small atomic examples<br>
+is always the best way to get through an unfamilier thing!<br>
+本笔记专注于收集日常中经常用到的莫名其妙甚至奇奇怪怪的bash脚本或linux命令行小妙招<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org79f6de5" class="outline-2">
+<h2 id="org79f6de5"><span class="section-number-2">3.</span> awk</h2>
+<div class="outline-text-2" id="text-3">
+<ul class="org-ul">
+<li>(逐行处理)awk 的基本形式通常是 条件 { 动作 }:符合条件的行执行动作;省略条件时,就处理每一行.<br></li>
+</ul>
+<p>
+score.txt:<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-txt"><code>小林 88
+小王 76
+小陈 93
+</code></pre>
+</div>
+<p>
+Usage of 'awk':<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-bash"><code>[<span style="color: #4ae2f0;">shyweeds</span>@archlinux]<span style="color: #ffffff;">$</span> <span style="color: #76afbf;">awk</span> <span style="color: #2fafff;">'$2 &gt; 80 { print $1 }'</span> ./test.txt
+<span style="color: #d09dc0;">&#23567;&#26519;</span>
+<span style="color: #d09dc0;">&#23567;&#38472;</span>
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orge8f9d75" class="outline-2">
+<h2 id="orge8f9d75"><span class="section-number-2">4.</span> sed</h2>
+<div class="outline-text-2" id="text-4">
+<ul class="org-ul">
+<li>sed 是面向文本流的编辑工具,常用来替换,筛选,删除或修改文本.它通常逐行处理输入.<br></li>
+</ul>
+<p>
+1.txt:<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-txt"><code>apple 10
+banana 20
+apple 30
+</code></pre>
+</div>
+<p>
+Usage of 'sed':<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-bash"><code>[<span style="color: #4ae2f0;">shyweeds</span>@archlinux]<span style="color: #ffffff;">$</span> <span style="color: #76afbf;">sed</span> <span style="color: #2fafff;">'s/apple/happy/'</span> ./1.txt
+<span style="color: #d09dc0;">happy</span> 10
+<span style="color: #d09dc0;">banana</span> 20
+<span style="color: #d09dc0;">happy</span> 30
+</code></pre>
+</div>
+<p>
+删除第二行<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">sed</span> <span style="color: #2fafff;">'2d'</span> data.txt
+</code></pre>
+</div>
+<p>
+删除空行<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">sed</span> <span style="color: #2fafff;">'/^$/d'</span> data.txt
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgf05493a" class="outline-2">
+<h2 id="orgf05493a"><span class="section-number-2">5.</span> find</h2>
+<div class="outline-text-2" id="text-5">
+<ul class="org-ul">
+<li>search for files in a directory hierarchy<br></li>
+</ul>
+<p>
+在当前目录下递归查找"main.rs"(可写正则表达式)的文件(-type file)<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">find</span> . -name main.rs -type f
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orga96d21a" class="outline-2">
+<h2 id="orga96d21a"><span class="section-number-2">6.</span> grep</h2>
+<div class="outline-text-2" id="text-6">
+<ul class="org-ul">
+<li>print lines that match patterns<br></li>
+</ul>
+<p>
+忽略大小写(-i),按行找出由find筛选出来的,目录名含有"project"(忽略大小写)的main.rs条目<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">find</span> . -name main.rs -type f | <span style="color: #d09dc0;">grep</span> -i project
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org12d5c27" class="outline-2">
+<h2 id="org12d5c27"><span class="section-number-2">7.</span> nohup</h2>
+<div class="outline-text-2" id="text-7">
+<ul class="org-ul">
+<li>run a command immune to hangups, with output to a non-tty<br></li>
+</ul>
+<div class="org-src-container">
+<pre class="src src-bash"><code>[<span style="color: #4ae2f0;">shyweeds</span>@archlinux]<span style="color: #ffffff;">$</span> <span style="color: #76afbf;">nohup</span> gammastep -O 4500 &gt;/dev/null <span style="color: #b6a0ff;">2</span>&gt;&amp;1 &lt; /dev/null &amp;
+[1] 23081
+[<span style="color: #4ae2f0;">shyweeds</span>@archlinux]<span style="color: #ffffff;">$</span> <span style="color: #76afbf;">jobs</span>
+[1]+  <span style="color: #d09dc0;">Running</span>                    nohup gammastep -O 4500 &gt; /dev/null <span style="color: #b6a0ff;">2</span>&gt;&amp;1 &lt; /dev/null &amp;
+</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

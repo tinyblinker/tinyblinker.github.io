@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>分析lineageos_for_moto_g67_power_unofficial_刷机包</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-11-25 Wed 21:44</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">分析lineageos_for_moto_g67_power_unofficial_刷机包</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#org0558ab5">1. 概览</a></li>
+<li><a href="#org661b381">2. 一,Zip 包结构</a></li>
+<li><a href="#org76a7fdb">3. 二,payload.bin 内 14 个分区镜像</a>
+<ul>
+<li><a href="#org21ab93a">3.1. 静态分区(8 个,直接刷入独立物理分区)</a></li>
+<li><a href="#orgcc208c8">3.2. 动态分区(6 个,写入 super 分区的非活跃槽位)</a></li>
+</ul>
+</li>
+<li><a href="#orgf69666f">4. 三,侧载(adb sideload)时的写入机制</a></li>
+<li><a href="#org0b0605d">5. 四,目录中其它相关文件</a></li>
+<li><a href="#orga581bae">6. 五,防回滚保护(Anti-Rollback)分析</a>
+<ul>
+<li><a href="#org2a356c6">6.1. 机制说明</a></li>
+<li><a href="#org08679fa">6.2. 当前版本号(rollback index / 构建号)</a></li>
+</ul>
+</li>
+<li><a href="#orgd2a566f">7. 六,各分区作用详细说明</a></li>
+<li><a href="#org570278b">8. 七,后续可选操作</a></li>
+<li><a href="#orga3068da">9. (<code>Extern</code>) <code>LineageOS 23.2 UNOFFICIAL (PORTOV)</code> 刷机包分区与 AVB 分析</a>
+<ul>
+<li><a href="#orgd910143">9.1. 一,包概况</a></li>
+<li><a href="#org3d3b925">9.2. 二,包内文件清单</a></li>
+<li><a href="#org4b39ee7">9.3. 三,payload.bin 内 14 个分区镜像</a></li>
+<li><a href="#orgd1e4bcb">9.4. 四,版本与 AVB(防回滚)信息</a>
+<ul>
+<li><a href="#org8456003">9.4.1. 4.1 版本信息汇总(实测)</a></li>
+<li><a href="#org5e5a10a">9.4.2. 4.2 <code>vbmeta.img</code> 头部(<code>avbtool info_image</code> 实测)</a></li>
+<li><a href="#org22a3d55">9.4.3. 4.3 <code>vbmeta_system.img</code> 头部(<code>avbtool info_image</code> 实测)</a></li>
+<li><a href="#org4b04a3b">9.4.4. 4.4 防回滚索引结论</a></li>
+</ul>
+</li>
+<li><a href="#orgc08f0c8">9.5. 五,AVB 描述符覆盖的分区及实际内容大小</a></li>
+<li><a href="#org2b6e784">9.6. 六,侧载修改小结</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-org0558ab5" class="outline-2">
+<h2 id="org0558ab5"><span class="section-number-2">1.</span> 概览</h2>
+<div class="outline-text-2" id="text-1">
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">项目</th>
+<th scope="col" class="org-left">内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">文件名</td>
+<td class="org-left">LineageOS23.2-UNOFFICIAL-PORTOV.zip</td>
+</tr>
+
+<tr>
+<td class="org-left">OTA 类型</td>
+<td class="org-left">A/B (Virtual A/B, seamless update)</td>
+</tr>
+
+<tr>
+<td class="org-left">设备代号</td>
+<td class="org-left">portov (motorola)</td>
+</tr>
+
+<tr>
+<td class="org-left">系统版本</td>
+<td class="org-left">Android 16 (SDK 36)</td>
+</tr>
+
+<tr>
+<td class="org-left">安全补丁</td>
+<td class="org-left">2026-07-01</td>
+</tr>
+
+<tr>
+<td class="org-left">Build ID</td>
+<td class="org-left">post-build-incremental = 1786187882</td>
+</tr>
+
+<tr>
+<td class="org-left">payload.bin 大小</td>
+<td class="org-left">1,668,573,656 B (约 1.55 GiB)</td>
+</tr>
+
+<tr>
+<td class="org-left">解压后总写入量</td>
+<td class="org-left">约 4,025 MiB</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-org661b381" class="outline-2">
+<h2 id="org661b381"><span class="section-number-2">2.</span> 一,Zip 包结构</h2>
+<div class="outline-text-2" id="text-2">
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">文件</th>
+<th scope="col" class="org-left">大小</th>
+<th scope="col" class="org-left">作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">payload.bin</td>
+<td class="org-left">~1.55 GiB</td>
+<td class="org-left">全部 14 个分区镜像的压缩数据(核心)</td>
+</tr>
+
+<tr>
+<td class="org-left">META-INF/&hellip;/metadata(.pb)</td>
+<td class="org-left">—</td>
+<td class="org-left">OTA 元数据:ab 类型,构建信息,偏移量</td>
+</tr>
+
+<tr>
+<td class="org-left">apex_info.pb</td>
+<td class="org-left">1,344 B</td>
+<td class="org-left">APEX 包版本清单</td>
+</tr>
+
+<tr>
+<td class="org-left">care_map.pb</td>
+<td class="org-left">803 B</td>
+<td class="org-left">分区 care map,刷机后校验/整理用</td>
+</tr>
+
+<tr>
+<td class="org-left">payload_properties.txt</td>
+<td class="org-left">156 B</td>
+<td class="org-left">payload 哈希与大小校验信息</td>
+</tr>
+
+<tr>
+<td class="org-left">META-INF/&hellip;/otacert</td>
+<td class="org-left">1,448 B</td>
+<td class="org-left">签名证书</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-org76a7fdb" class="outline-2">
+<h2 id="org76a7fdb"><span class="section-number-2">3.</span> 二,payload.bin 内 14 个分区镜像</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+payload 头部:magic <code>CrAU</code>,payload 版本 2,块大小 4096 B,manifest 115,184 字节.<br>
+所有分区操作类型均为 REPLACE*(全新覆盖写入,非增量差分).<br>
+</p>
+</div>
+<div id="outline-container-org21ab93a" class="outline-3">
+<h3 id="org21ab93a"><span class="section-number-3">3.1.</span> 静态分区(8 个,直接刷入独立物理分区)</h3>
+<div class="outline-text-3" id="text-3-1">
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-right">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">分区</th>
+<th scope="col" class="org-left">新镜像大小</th>
+<th scope="col" class="org-right">操作数</th>
+<th scope="col" class="org-left">作用说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">boot</td>
+<td class="org-left">96 MiB</td>
+<td class="org-right">48</td>
+<td class="org-left">内核 (kernel) + 通用 ramdisk(GKI,Generic Kernel Image)</td>
+</tr>
+
+<tr>
+<td class="org-left">dtbo</td>
+<td class="org-left">24 MiB</td>
+<td class="org-right">12</td>
+<td class="org-left">Device Tree Overlay,运行时叠加到基础设备树,描述硬件差异配置</td>
+</tr>
+
+<tr>
+<td class="org-left">init_boot</td>
+<td class="org-left">8 MiB</td>
+<td class="org-right">4</td>
+<td class="org-left">Android 13+ 拆分出的 init ramdisk(原属于 boot),承载首阶段 init 逻辑</td>
+</tr>
+
+<tr>
+<td class="org-left">recovery</td>
+<td class="org-left">128 MiB</td>
+<td class="org-right">64</td>
+<td class="org-left">独立 Recovery 镜像(非 A/B 无缝恢复设备上用于 OTA/救砖/工程模式)</td>
+</tr>
+
+<tr>
+<td class="org-left">vendor_boot</td>
+<td class="org-left">96 MiB</td>
+<td class="org-right">48</td>
+<td class="org-left">vendor 专属 ramdisk + 第二阶段 init,配合 GKI boot 实现厂商代码解耦</td>
+</tr>
+
+<tr>
+<td class="org-left">vbmeta</td>
+<td class="org-left">8 KiB</td>
+<td class="org-right">1</td>
+<td class="org-left">AVB(Android Verified Boot)顶层元数据,校验 boot/system 等镜像完整性</td>
+</tr>
+
+<tr>
+<td class="org-left">vbmeta_system</td>
+<td class="org-left">4 KiB</td>
+<td class="org-right">1</td>
+<td class="org-left">AVB 针对 system 相关镜像链的独立校验元数据</td>
+</tr>
+
+<tr>
+<td class="org-left">pvmfw</td>
+<td class="org-left">2 MiB</td>
+<td class="org-right">1</td>
+<td class="org-left">Protected VM Firmware,Android Virtualization Framework(微虚拟机/pKVM)固件</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-orgcc208c8" class="outline-3">
+<h3 id="orgcc208c8"><span class="section-number-3">3.2.</span> 动态分区(6 个,写入 super 分区的非活跃槽位)</h3>
+<div class="outline-text-3" id="text-3-2">
+<p>
+属于动态分区组 <code>mot_dp_group=(总容量约 7 GiB),manifest 中
+=dynamic_partition_metadata.snapshot_enabled = true</code>,即 Virtual A/B 快照/COW 机制.<br>
+</p>
+
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-right">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">分区</th>
+<th scope="col" class="org-left">文件系统</th>
+<th scope="col" class="org-left">新镜像大小</th>
+<th scope="col" class="org-right">操作数</th>
+<th scope="col" class="org-left">作用说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">system</td>
+<td class="org-left">erofs</td>
+<td class="org-left">~773 MiB</td>
+<td class="org-right">387</td>
+<td class="org-left">Android 核心框架,系统服务,system server 等运行时</td>
+</tr>
+
+<tr>
+<td class="org-left">system_ext</td>
+<td class="org-left">erofs</td>
+<td class="org-left">~505 MiB</td>
+<td class="org-right">253</td>
+<td class="org-left">系统扩展分区,OEM/GSI 定制系统级服务与库(与 system 解耦以支持 GSI)</td>
+</tr>
+
+<tr>
+<td class="org-left">product</td>
+<td class="org-left">erofs</td>
+<td class="org-left">~1,771 MiB</td>
+<td class="org-right">886</td>
+<td class="org-left">产品差异化层:预装 App,运营商/区域定制内容,部分厂商服务</td>
+</tr>
+
+<tr>
+<td class="org-left">vendor</td>
+<td class="org-left">erofs</td>
+<td class="org-left">~595 MiB</td>
+<td class="org-right">298</td>
+<td class="org-left">HAL 实现,厂商专有库,驱动相关用户态组件</td>
+</tr>
+
+<tr>
+<td class="org-left">system_dlkm</td>
+<td class="org-left">erofs</td>
+<td class="org-left">~7.2 MiB</td>
+<td class="org-right">4</td>
+<td class="org-left">system 侧可动态加载内核模块(GKI 内核模块分离机制)</td>
+</tr>
+
+<tr>
+<td class="org-left">vendor_dlkm</td>
+<td class="org-left">erofs</td>
+<td class="org-left">~21.5 MiB</td>
+<td class="org-right">11</td>
+<td class="org-left">vendor 侧可动态加载内核模块(厂商私有驱动模块)</td>
+</tr>
+</tbody>
+</table>
+
+<p>
+合计解压后写入约 4,025 MiB,对应压缩后 payload.bin 约 1,591 MiB.<br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-orgf69666f" class="outline-2">
+<h2 id="orgf69666f"><span class="section-number-2">4.</span> 三,侧载(adb sideload)时的写入机制</h2>
+<div class="outline-text-2" id="text-4">
+<ul class="org-ul">
+<li>全部 14 个分区均会被覆盖写入(全量 OTA,非增量包).<br></li>
+<li><b>静态分区</b> (boot/dtbo/init_boot/recovery/vendor_boot/vbmeta/vbmeta_system/pvmfw):<br>
+各自拥有独立物理分区,直接写入 inactive slot.<br></li>
+<li><b>动态分区</b> (system/system_ext/product/vendor/system_dlkm/vendor_dlkm):<br>
+写入 super 分区中的 inactive slot,通过 Virtual A/B 快照/COW 机制完成,<br>
+刷机过程中 active slot 与用户数据不受影响,重启后才切换槽位.<br></li>
+<li>manifest 标记 <code>system</code> 与 <code>vendor</code> 分区 <code>run_postinstall = true</code>,<br>
+侧载末尾会执行 postinstall 脚本(用于 APEX 激活,dex 优化等收尾工作).<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org0b0605d" class="outline-2">
+<h2 id="org0b0605d"><span class="section-number-2">5.</span> 四,目录中其它相关文件</h2>
+<div class="outline-text-2" id="text-5">
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">文件</th>
+<th scope="col" class="org-left">作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">recovery.img (128 MiB)</td>
+<td class="org-left">与 payload 内 recovery 分区对应的独立镜像,供 fastboot 单独刷入</td>
+</tr>
+
+<tr>
+<td class="org-left">init_boot.img (8 MiB)</td>
+<td class="org-left">与 payload 内 init_boot 分区对应的独立镜像,供 fastboot 单独刷入</td>
+</tr>
+
+<tr>
+<td class="org-left">copy-partitions-20220613-signed.zip</td>
+<td class="org-left">LineageOS 官方 A/B 槽位同步辅助包,首次刷机前同步 active→inactive 槽位,避免槽位不一致导致无法启动</td>
+</tr>
+
+<tr>
+<td class="org-left">MindTheGapps-16.0.0-arm64-*.zip</td>
+<td class="org-left">独立 GApps 套件,需要单独再执行一次 adb sideload</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-orga581bae" class="outline-2">
+<h2 id="orga581bae"><span class="section-number-2">6.</span> 五,防回滚保护(Anti-Rollback)分析</h2>
+<div class="outline-text-2" id="text-6">
+</div>
+<div id="outline-container-org2a356c6" class="outline-3">
+<h3 id="org2a356c6"><span class="section-number-3">6.1.</span> 机制说明</h3>
+<div class="outline-text-3" id="text-6-1">
+<p>
+Android 的防回滚保护基于 <b>AVB (Android Verified Boot) rollback index</b>,<br>
+而不是逐分区独立实现,理解上要分两条校验链:<br>
+</p>
+
+<ul class="org-ul">
+<li><b>system 校验链</b> (由 <code>vbmeta</code> 统领):涵盖 boot,system,vendor,<br>
+system_ext,product,system_dlkm,vendor_dlkm,dtbo,init_boot,<br>
+vendor_boot 等,这些分区的哈希/hashtree 描述符被打包进 <code>vbmeta</code> 的<br>
+descriptor 中,由 <code>vbmeta</code> 的单一 rollback_index 统一保护.<br>
+也就是说,只要 <code>vbmeta</code> 校验通过且其 rollback_index ≥ 设备当前<br>
+fused/存储的最小值,这一整条链上的分区就被视为合法,不存在"某个<br>
+分区单独有防回滚,另一个没有"的情况.<br></li>
+<li><b>system 子链</b> (由 <code>vbmeta_system</code> 统领,若设备启用了 chained<br>
+partition):可对 system 相关镜像做独立的次级签名与 rollback_index,<br>
+但本包中 <code>vbmeta_system</code> 仅 4 KiB,通常只是一个占位/链式引用,<br>
+实际保护仍归并到主 <code>vbmeta</code> 的 rollback_index.<br></li>
+<li><b>recovery</b>:在 A/B 无缝升级设备上通常合并进 boot/init_boot 链,<br>
+不单独设防回滚索引;本包仍附带独立 recovery.img,多为兼容/救砖用途.<br></li>
+<li><b>pvmfw</b>:属于 pKVM/AVF 固件,有自己独立的签名验证机制(非标准 vbmeta<br>
+descriptor 链的一部分),部分设备会有单独的 anti-rollback 存储位.<br></li>
+<li><b>dtbo</b>:在支持的设备上可被纳入 vbmeta 的 hash descriptor 一并保护,<br>
+具体取决于厂商 fstab / avb 配置.<br></li>
+</ul>
+
+<p>
+简言之:*真正会触发"防回滚"拒绝刷入的不是单个分区各自的版本号,<br>
+而是 vbmeta(以及可能存在的 vbmeta_system)里记录的 rollback_index<br>
+是否小于设备 tamper-resistant storage(如 fuse/rpmb)中已记录的最小值.*<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org08679fa" class="outline-3">
+<h3 id="org08679fa"><span class="section-number-3">6.2.</span> 当前版本号(rollback index / 构建号)</h3>
+<div class="outline-text-3" id="text-6-2">
+<p>
+关于本包 <b>实际</b> 的 rollback_index 数值,需要从 vbmeta / vbmeta_system<br>
+镜像头部读取(<code>avbtool info_image --image vbmeta.img</code> 可看到<br>
+<code>Rollback Index:</code> 字段),而不是从 payload manifest 的分区大小/操作数<br>
+里能直接得出——此前的分析未提取该字段,因此这里不臆造具体数字.<br>
+</p>
+
+<p>
+目前可确认的版本相关信息(来自 OTA metadata):<br>
+</p>
+
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">项目</th>
+<th scope="col" class="org-left">值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">Build fingerprint 构建号</td>
+<td class="org-left">post-build-incremental = 1786187882</td>
+</tr>
+
+<tr>
+<td class="org-left">Android 版本 / SDK</td>
+<td class="org-left">Android 16 (SDK 36)</td>
+</tr>
+
+<tr>
+<td class="org-left">安全补丁级别</td>
+<td class="org-left">2026-07-01</td>
+</tr>
+
+<tr>
+<td class="org-left">vbmeta rollback_index</td>
+<td class="org-left">需从 vbmeta.img 头部读取(未提取)</td>
+</tr>
+
+<tr>
+<td class="org-left">vbmeta_system rollback_index</td>
+<td class="org-left">需从 vbmeta_system.img 头部读取(未提取)</td>
+</tr>
+</tbody>
+</table>
+
+<p>
+若需要精确的防回滚索引值,我可以在拿到实际 <code>vbmeta.img</code> /<br>
+<code>vbmeta_system.img=(从 payload.bin 中 dump 出来)后,用
+=avbtool info_image</code> 提取 <code>Rollback Index</code>, <code>Rollback Index Location</code><br>
+等字段补充进本文件;目前这两项先标注为待提取,避免给出不实数据.<br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-orgd2a566f" class="outline-2">
+<h2 id="orgd2a566f"><span class="section-number-2">7.</span> 六,各分区作用详细说明</h2>
+<div class="outline-text-2" id="text-7">
+<ul class="org-ul">
+<li><b>boot</b>:容纳 Linux 内核镜像与通用 ramdisk(GKI 架构下与设备无关),<br>
+是启动流程第一阶段加载的核心镜像.<br></li>
+<li><b>dtbo (Device Tree Overlay)</b>:在基础设备树上叠加硬件差异化配置<br>
+(如主板版本,外设差异),使同一内核适配多种硬件变体.<br></li>
+<li><b>init_boot</b>:Android 13 起从 boot 中拆分出来的 init ramdisk,<br>
+专门承载设备无关的第一阶段 init 逻辑,便于 GKI 内核独立更新.<br></li>
+<li><b>recovery</b>:独立恢复环境镜像,用于 OTA 恢复模式,出厂重置,<br>
+以及部分设备的救砖/工程操作入口.<br></li>
+<li><b>vendor_boot</b>:与 boot 配套的厂商专属 ramdisk,承载第二阶段<br>
+init 与厂商特有的启动逻辑,实现"通用内核 + 厂商定制"解耦.<br></li>
+<li><b>vbmeta</b>:AVB 顶层元数据镜像,记录各被保护分区的哈希/哈希树<br>
+描述符与统一的 rollback_index,是整条验证启动链的信任根之一.<br></li>
+<li><b>vbmeta_system</b>:面向 system 相关链的次级 AVB 元数据(chained<br>
+partition),可独立于主 vbmeta 进行签名与版本管理.<br></li>
+<li><b>pvmfw (Protected VM Firmware)</b>:Android Virtualization Framework<br>
+(AVF) / pKVM 微虚拟机的固件镜像,用于启动隔离的受保护虚拟机环境.<br></li>
+<li><b>system</b>:Android 框架层核心,包含 system server,Zygote,<br>
+框架 Java/Native 库等系统运行时(erofs 只读文件系统).<br></li>
+<li><b>system_ext</b>:从 system 中拆分出的系统级扩展分区,用于 OEM/GSI<br>
+兼容场景下承载厂商系统服务,避免污染纯净 system 镜像.<br></li>
+<li><b>product</b>:产品差异化层,容纳预装 App,区域/运营商定制内容,<br>
+部分厂商增值服务,便于同一系统镜像适配不同产品线.<br></li>
+<li><b>vendor</b>:HAL(硬件抽象层)实现,厂商专有闭源库,驱动配套的<br>
+用户态组件,是连接内核驱动与 Android 框架的桥梁.<br></li>
+<li><b>system_dlkm</b>:GKI 架构下与 system 相关,可动态加载的内核模块<br>
+(.ko),使内核模块可独立于 boot 镜像更新.<br></li>
+<li><b>vendor_dlkm</b>:厂商私有的可动态加载内核模块,通常是闭源驱动<br>
+模块,与 vendor 分区配合工作.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org570278b" class="outline-2">
+<h2 id="org570278b"><span class="section-number-2">8.</span> 七,后续可选操作</h2>
+<div class="outline-text-2" id="text-8">
+<ul class="org-ul">
+<li>使用 payload-dumper 将 payload.bin 拆分为 14 个独立 <code>.img</code> 文件.<br></li>
+<li>结合 erofs 工具(如 <code>fsck.erofs</code> / <code>erofs-utils</code> 提取工具)解包<br>
+system / vendor / product 等 erofs 分区,查看具体文件内容.<br></li>
+<li>使用 <code>avbtool info_image</code> 提取 vbmeta / vbmeta_system 的实际<br>
+rollback_index,补全第五节的防回滚版本号.<br></li>
+</ul>
+
+<p>
+<i>注:当前分析基于静态解析 payload manifest 与 zip 结构,未执行任何写入或刷机操作;<br>
+防回滚索引具体数值需实际 dump 出 vbmeta 镜像后提取,本文件中已如实标注为待提取.</i><br>
+</p>
+</div>
+</div>
+<div id="outline-container-orga3068da" class="outline-2">
+<h2 id="orga3068da"><span class="section-number-2">9.</span> (<code>Extern</code>) <code>LineageOS 23.2 UNOFFICIAL (PORTOV)</code> 刷机包分区与 AVB 分析</h2>
+<div class="outline-text-2" id="text-9">
+</div>
+<div id="outline-container-orgd910143" class="outline-3">
+<h3 id="orgd910143"><span class="section-number-3">9.1.</span> 一,包概况</h3>
+<div class="outline-text-3" id="text-9-1">
+<p>
+本包 <code>LineageOS23.2-UNOFFICIAL-PORTOV.zip</code> 为 A/B 全量 OTA 包(payload 机制),<br>
+目标机型 portov(Moto XT2533-4),Android 16(SDK 36),安全补丁 2026-07-01.<br>
+</p>
+
+<ul class="org-ul">
+<li><code>ota-type=AB</code>,采用 Virtual A/B(<code>snapshot_enabled=true</code>).<br></li>
+<li>payload 版本 2,块大小 4096,manifest 115,184 字节.<br></li>
+<li>侧载时写入 /非活跃槽位/(inactive slot),重启后由 bootloader 切换槽位生效.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org3d3b925" class="outline-3">
+<h3 id="org3d3b925"><span class="section-number-3">9.2.</span> 二,包内文件清单</h3>
+<div class="outline-text-3" id="text-9-2">
+<table align="left">
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">文件</th>
+<th scope="col" class="org-left">大小</th>
+<th scope="col" class="org-left">作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left"><code>payload.bin</code></td>
+<td class="org-left">1,668,573,656 B (~1.55 GiB)</td>
+<td class="org-left">14 个分区压缩镜像(核心)</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>META-INF/com/android/metadata</code> / <code>metadata.pb</code></td>
+<td class="org-left">—</td>
+<td class="org-left">OTA 元数据(AB,构建号,property 偏移)</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>apex_info.pb</code></td>
+<td class="org-left">1,344 B</td>
+<td class="org-left">APEX 版本清单</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>care_map.pb</code></td>
+<td class="org-left">803 B</td>
+<td class="org-left">分区 care map</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>payload_properties.txt</code></td>
+<td class="org-left">156 B</td>
+<td class="org-left">payload 哈希/大小校验</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>META-INF/com/android/otacert</code></td>
+<td class="org-left">1,448 B</td>
+<td class="org-left">签名证书</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-org4b39ee7" class="outline-3">
+<h3 id="org4b39ee7"><span class="section-number-3">9.3.</span> 三,payload.bin 内 14 个分区镜像</h3>
+<div class="outline-text-3" id="text-9-3">
+<p>
+<code>REPLACE*</code> 表示全新写入.侧载时全部 14 个分区均被改写.<br>
+</p>
+
+<table align="left">
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-right">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">分区</th>
+<th scope="col" class="org-left">类型</th>
+<th scope="col" class="org-left">文件系统</th>
+<th scope="col" class="org-left">分区大小(manifest)</th>
+<th scope="col" class="org-left">侧载写入量</th>
+<th scope="col" class="org-right">操作数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left"><code>boot</code></td>
+<td class="org-left">静态</td>
+<td class="org-left">raw</td>
+<td class="org-left">96.0 MiB</td>
+<td class="org-left">96.0 MiB</td>
+<td class="org-right">48</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>dtbo</code></td>
+<td class="org-left">静态</td>
+<td class="org-left">raw</td>
+<td class="org-left">24.0 MiB</td>
+<td class="org-left">24.0 MiB</td>
+<td class="org-right">12</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>init_boot</code></td>
+<td class="org-left">静态</td>
+<td class="org-left">raw</td>
+<td class="org-left">8.0 MiB</td>
+<td class="org-left">8.0 MiB</td>
+<td class="org-right">4</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>recovery</code></td>
+<td class="org-left">静态</td>
+<td class="org-left">raw</td>
+<td class="org-left">128.0 MiB</td>
+<td class="org-left">128.0 MiB</td>
+<td class="org-right">64</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>vendor_boot</code></td>
+<td class="org-left">静态</td>
+<td class="org-left">raw</td>
+<td class="org-left">96.0 MiB</td>
+<td class="org-left">96.0 MiB</td>
+<td class="org-right">48</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>vbmeta</code></td>
+<td class="org-left">静态</td>
+<td class="org-left">AVB</td>
+<td class="org-left">8 KiB</td>
+<td class="org-left">8 KiB</td>
+<td class="org-right">1</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>vbmeta_system</code></td>
+<td class="org-left">静态</td>
+<td class="org-left">AVB</td>
+<td class="org-left">4 KiB</td>
+<td class="org-left">4 KiB</td>
+<td class="org-right">1</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>pvmfw</code></td>
+<td class="org-left">静态</td>
+<td class="org-left">raw</td>
+<td class="org-left">2.0 MiB</td>
+<td class="org-left">2.0 MiB</td>
+<td class="org-right">1</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>system</code></td>
+<td class="org-left">动态</td>
+<td class="org-left">erofs</td>
+<td class="org-left">772.8 MiB</td>
+<td class="org-left">772.8 MiB</td>
+<td class="org-right">387</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>system_ext</code></td>
+<td class="org-left">动态</td>
+<td class="org-left">只读(dm-verity)</td>
+<td class="org-left">504.6 MiB</td>
+<td class="org-left">504.6 MiB</td>
+<td class="org-right">253</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>product</code></td>
+<td class="org-left">动态</td>
+<td class="org-left">只读(dm-verity)</td>
+<td class="org-left">1,770.7 MiB</td>
+<td class="org-left">1,770.7 MiB</td>
+<td class="org-right">886</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>vendor</code></td>
+<td class="org-left">动态</td>
+<td class="org-left">erofs</td>
+<td class="org-left">594.5 MiB</td>
+<td class="org-left">594.5 MiB</td>
+<td class="org-right">298</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>system_dlkm</code></td>
+<td class="org-left">动态</td>
+<td class="org-left">只读(dm-verity)</td>
+<td class="org-left">7.2 MiB</td>
+<td class="org-left">7.2 MiB</td>
+<td class="org-right">4</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>vendor_dlkm</code></td>
+<td class="org-left">动态</td>
+<td class="org-left">只读(dm-verity)</td>
+<td class="org-left">21.5 MiB</td>
+<td class="org-left">21.5 MiB</td>
+<td class="org-right">11</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td class="org-left">合计</td>
+<td class="org-left">8 静态 + 6 动态</td>
+<td class="org-left">&nbsp;</td>
+<td class="org-left">&nbsp;</td>
+<td class="org-left">≈4,025 MiB</td>
+<td class="org-right">2,018</td>
+</tr>
+</tbody>
+</table>
+
+<p>
+说明:<br>
+</p>
+
+<ul class="org-ul">
+<li>静态分区(8 个):=boot= <code>dtbo</code> <code>init_boot</code> <code>recovery</code> <code>vendor_boot</code> <code>vbmeta</code> <code>vbmeta_system</code> <code>pvmfw</code>,各自独立物理分区,直接刷入 inactive slot.<br></li>
+<li>动态分区(6 个):=system= <code>system_ext</code> <code>product</code> <code>vendor</code> <code>system_dlkm</code> <code>vendor_dlkm</code>,同属动态分区组 <code>mot_dp_group=(约 7 GiB,位于 =super</code> 分区),经快照/COW 写入 inactive slot.<br></li>
+<li>'分区大小(manifest)'为 <code>new_partition_info.size</code>,即逻辑分区被完整写入的总大小(含 hashtree/FEC 与填充);AVB 描述符里的实际内容大小更小,见第四节.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgd1e4bcb" class="outline-3">
+<h3 id="orgd1e4bcb"><span class="section-number-3">9.4.</span> 四,版本与 AVB(防回滚)信息</h3>
+<div class="outline-text-3" id="text-9-4">
+</div>
+<div id="outline-container-org8456003" class="outline-4">
+<h4 id="org8456003"><span class="section-number-4">9.4.1.</span> 4.1 版本信息汇总(实测)</h4>
+<div class="outline-text-4" id="text-9-4-1">
+<table align="left">
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">项目</th>
+<th scope="col" class="org-left">值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">Build fingerprint 构建号</td>
+<td class="org-left"><code>post-build-incremental</code> 1786187882</td>
+</tr>
+
+<tr>
+<td class="org-left">完整指纹</td>
+<td class="org-left"><code>motorola/lineage_portov/portov:16/BP4A.251205.006/eng.rlcc:user/release-keys</code></td>
+</tr>
+
+<tr>
+<td class="org-left">Android 版本 / SDK</td>
+<td class="org-left">Android 16 (SDK 36)</td>
+</tr>
+
+<tr>
+<td class="org-left">安全补丁级别</td>
+<td class="org-left">2026-07-01</td>
+</tr>
+
+<tr>
+<td class="org-left">vbmeta rollback_index</td>
+<td class="org-left"><code>11</code> (实测,见 4.2)</td>
+</tr>
+
+<tr>
+<td class="org-left">vbmeta_system rollback_index</td>
+<td class="org-left"><code>11</code> (实测,见 4.3)</td>
+</tr>
+
+<tr>
+<td class="org-left">AVB 工具版本</td>
+<td class="org-left"><code>avbtool 1.3.0</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-org5e5a10a" class="outline-4">
+<h4 id="org5e5a10a"><span class="section-number-4">9.4.2.</span> 4.2 <code>vbmeta.img</code> 头部(<code>avbtool info_image</code> 实测)</h4>
+<div class="outline-text-4" id="text-9-4-2">
+<pre class="example" id="org9a2bb24">
+Minimum libavb version:   1.0
+Header Block:             256 bytes
+Authentication Block:     576 bytes
+Auxiliary Block:          5312 bytes
+Public key (sha1):        2597c218aae470a130f61162feaae70afd97f011
+Algorithm:                SHA256_RSA4096
+Rollback Index:           11
+Flags:                    3
+Rollback Index Location:  0
+Release String:           'avbtool 1.3.0'
+</pre>
+
+<p>
+关键字段:<br>
+</p>
+
+<ul class="org-ul">
+<li><code>Rollback Index = 11</code>, <code>Rollback Index Location=0</code> (顶层 vbmeta,占用防回滚槽位 0).<br></li>
+<li><code>Flags = 3</code>: <code>0x1|0x2</code> ,即 <i>同时</i> 置位 <code>HASHTREE_DISABLED</code> 与 <code>VERIFICATION_DISABLED</code>,说明本构建关闭了 dm-verity 哈希树校验与签名校验(eng/unofficial 构建常见).<br></li>
+<li><code>Algorithm = SHA256_RSA4096</code>,公钥 <code>2597c218aae470a130f61162feaae70afd97f011</code>.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org22a3d55" class="outline-4">
+<h4 id="org22a3d55"><span class="section-number-4">9.4.3.</span> 4.3 <code>vbmeta_system.img</code> 头部(<code>avbtool info_image</code> 实测)</h4>
+<div class="outline-text-4" id="text-9-4-3">
+<pre class="example" id="org620ef7b">
+Minimum libavb version:   1.0
+Header Block:             256 bytes
+Authentication Block:     320 bytes
+Auxiliary Block:          2624 bytes
+Public key (sha1):        cdbb77177f731920bbe0a0f94f84d9038ae0617d
+Algorithm:                SHA256_RSA2048
+Rollback Index:           11
+Flags:                    0
+Rollback Index Location:  0
+Release String:           'avbtool 1.3.0'
+</pre>
+
+<p>
+关键字段:<br>
+</p>
+
+<ul class="org-ul">
+<li><code>Rollback Index = 11</code>,自身头部 <code>Rollback Index Location = 0</code>.<br></li>
+<li>在父 <code>vbmeta.img</code> 的 <code>Chain Partition</code> 描述符中,=vbmeta_system= 被引用为 <code>Rollback Index Location = 2</code>,即其防回滚值实际参与比对的位置是槽位 2.<br></li>
+<li>=Flags = 0=(未禁用校验).<br></li>
+<li><code>Algorithm = SHA256_RSA2048</code>,公钥 =cdbb77177f731920bbe0a0f94f84d9038ae0617d=(与父 vbmeta 链式描述符中记录的公钥一致).<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org4b04a3b" class="outline-4">
+<h4 id="org4b04a3b"><span class="section-number-4">9.4.4.</span> 4.4 防回滚索引结论</h4>
+<div class="outline-text-4" id="text-9-4-4">
+<table align="left">
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-right">
+
+<col  class="org-right">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">分区</th>
+<th scope="col" class="org-right">rollback_index</th>
+<th scope="col" class="org-right">rollback_index_location(自身)</th>
+<th scope="col" class="org-left">被引用位置(父链描述符)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left"><code>vbmeta</code></td>
+<td class="org-right">11</td>
+<td class="org-right">0</td>
+<td class="org-left">—(顶层)</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>vbmeta_system</code></td>
+<td class="org-right">11</td>
+<td class="org-right">0</td>
+<td class="org-left">2</td>
+</tr>
+</tbody>
+</table>
+
+<p>
+即两个 vbmeta 镜像的防回滚索引 <i>均为 11</i>;vbmeta 为顶层(槽位 0),<br>
+vbmeta_system 作为链式分区参与校验,其回滚索引被父 vbmeta 记录在槽位 2.<br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-orgc08f0c8" class="outline-3">
+<h3 id="orgc08f0c8"><span class="section-number-3">9.5.</span> 五,AVB 描述符覆盖的分区及实际内容大小</h3>
+<div class="outline-text-3" id="text-9-5">
+<p>
+<code>vbmeta.img</code> 内描述符(hash / hashtree):<br>
+</p>
+
+<table align="left">
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">分区</th>
+<th scope="col" class="org-left">描述符类型</th>
+<th scope="col" class="org-left">实际内容大小 (Image Size)</th>
+<th scope="col" class="org-left">校验算法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left"><code>boot</code></td>
+<td class="org-left">hash</td>
+<td class="org-left">36,462,592 B (~34.8 MiB)</td>
+<td class="org-left">sha256</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>dtbo</code></td>
+<td class="org-left">hash</td>
+<td class="org-left">389,476 B (~380 KiB)</td>
+<td class="org-left">sha256</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>init_boot</code></td>
+<td class="org-left">hash</td>
+<td class="org-left">2,646,016 B (~2.5 MiB)</td>
+<td class="org-left">sha256</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>recovery</code></td>
+<td class="org-left">hash</td>
+<td class="org-left">18,378,752 B (~17.5 MiB)</td>
+<td class="org-left">sha256</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>vendor_boot</code></td>
+<td class="org-left">hash</td>
+<td class="org-left">11,386,880 B (~10.9 MiB)</td>
+<td class="org-left">sha256</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>system_dlkm</code></td>
+<td class="org-left">hashtree (dm-verity)</td>
+<td class="org-left">7,352,320 B (~7.0 MiB)</td>
+<td class="org-left">sha256</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>vendor</code></td>
+<td class="org-left">hashtree (dm-verity)</td>
+<td class="org-left">611,663,872 B (~583.3 MiB)</td>
+<td class="org-left">sha256</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>vendor_dlkm</code></td>
+<td class="org-left">hashtree (dm-verity)</td>
+<td class="org-left">22,016,000 B (~21.0 MiB)</td>
+<td class="org-left">sha256</td>
+</tr>
+</tbody>
+</table>
+
+<p>
+<code>vbmeta_system.img</code> 内描述符:<br>
+</p>
+
+<table align="left">
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">分区</th>
+<th scope="col" class="org-left">描述符类型</th>
+<th scope="col" class="org-left">实际内容大小 (Image Size)</th>
+<th scope="col" class="org-left">校验算法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left"><code>pvmfw</code></td>
+<td class="org-left">hash</td>
+<td class="org-left">782,336 B (~764 KiB)</td>
+<td class="org-left">sha256</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>product</code></td>
+<td class="org-left">hashtree (dm-verity)</td>
+<td class="org-left">581,206,016 B (~554.3 MiB)</td>
+<td class="org-left">sha256</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>system</code></td>
+<td class="org-left">hashtree (dm-verity)</td>
+<td class="org-left">639,139,840 B (~609.5 MiB)</td>
+<td class="org-left">sha256</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>system_ext</code></td>
+<td class="org-left">hashtree (dm-verity)</td>
+<td class="org-left">387,506,176 B (~369.6 MiB)</td>
+<td class="org-left">sha256</td>
+</tr>
+</tbody>
+</table>
+
+<p>
+注意:这里的 <code>Image Size</code> 是文件系统数据本身的大小;而第三节'分区大小(manifest)'<br>
+是逻辑分区完整写入大小(数据 + hashtree + FEC + 填充).二者差异即分区内的空闲/填充空间.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org2b6e784" class="outline-3">
+<h3 id="org2b6e784"><span class="section-number-3">9.6.</span> 六,侧载修改小结</h3>
+<div class="outline-text-3" id="text-9-6">
+<ol class="org-ol">
+<li><code>adb sideload LineageOS23.2-UNOFFICIAL-PORTOV.zip</code> 会在 recovery 中由<br>
+update_engine 将 payload 应用到 <i>非活跃槽位</i>,一次性改写全部 14 个分区:<br>
+<ul class="org-ul">
+<li>8 个静态分区直接覆盖 inactive slot 的独立分区;<br></li>
+<li>6 个动态分区经 Virtual A/B 快照写入 <code>super</code> 分区对应槽位.<br></li>
+</ul></li>
+<li>防回滚: <code>vbmeta</code> 与 <code>vbmeta_system</code> 的 <code>Rollback Index</code> 均为 <code>11</code>;<br>
+由于 <code>vbmeta</code> 的 <code>Flags=3</code> 禁用了校验,本构建 bootloader 实际不强制<br>
+dm-verity / 签名验证.<br></li>
+<li>目录中另有 <code>recovery.img</code>, <code>init_boot.img</code> 为与 payload 内 <code>recovery</code> / <code>init_boot</code><br>
+一致的独立镜像(供 fastboot 单独刷入); <code>copy-partitions-20220613-signed.zip</code> 为<br>
+首次刷机前同步 A/B 槽位的辅助包; <code>MindTheGapps-16.0.0-arm64-...zip</code> 为独立 GApps 包.<br></li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

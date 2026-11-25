@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>archlinux的旁路由配置</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-11-25 Wed 21:32</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">archlinux的旁路由配置</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#org6047a6b">1. 原理</a></li>
+<li><a href="#org05baa20">2. 环境</a></li>
+<li><a href="#org829909d">3. 安装 mihomo</a></li>
+<li><a href="#org55922ac">4. 配置文件</a>
+<ul>
+<li><a href="#orgf86cb9d">4.1. <code>/etc/mihomo/config.yaml</code></a></li>
+<li><a href="#org44b440a">4.2. <code>/etc/sysctl.d/99-gateway.conf</code></a></li>
+<li><a href="#org61316f4">4.3. <code>/etc/nftables.conf</code></a></li>
+</ul>
+</li>
+<li><a href="#org97b8c24">5. 操作步骤</a></li>
+<li><a href="#orga33c564">6. 客户端设置</a></li>
+<li><a href="#org7d2ae88">7. 验证</a>
+<ul>
+<li><a href="#org551a8ab">7.1. 在本机确认</a></li>
+<li><a href="#org87dfc65">7.2. 在客户端验证</a></li>
+</ul>
+</li>
+<li><a href="#orgf589586">8. 踩坑记录</a>
+<ul>
+<li><a href="#org0cdc562">8.1. nftables 启动失败: <code>redirect ... return</code> 语法错误</a></li>
+<li><a href="#orgb71de53">8.2. mihomo 修改配置后不生效</a></li>
+<li><a href="#orgb97463b">8.3. 客户端 DNS 不通</a></li>
+<li><a href="#orgdf4c834">8.4. IPv6 泄漏</a></li>
+<li><a href="#org28ef35b">8.5. 是否需要 TProxy?</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-org6047a6b" class="outline-2">
+<h2 id="org6047a6b"><span class="section-number-2">1.</span> 原理</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+一台运行 Arch Linux 的小主机通过 WiFi 连接上游路由器, 同一局域网内的其他设<br>
+备将网关和 DNS 指向该主机, 流量经 mihomo TUN 透明代理分流: 国内直连、境外走<br>
+代理节点。本机自身代理不受影响, 下游设备零配置感知。<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ascii"><code>
+上游路由器 (192.168.31.1, DHCP)
+│
+├─ 本机 (192.168.31.194, mihomo)  ←─ WiFi
+│    ├─ 自身流量 → TUN → 分流
+│    └─ 转发流量 → MASQUERADE → TUN → 分流
+│
+└─ 其他设备 (网关/DNS = 192.168.31.194)
+     └─ 经本机转发, 透明代理
+
+</code></pre>
+</div>
+
+<p>
+旁路由与「主路由接管」的区别在于不改变现有网络拓扑, 只需按需修改终端设备的网<br>
+关设置即可。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org05baa20" class="outline-2">
+<h2 id="org05baa20"><span class="section-number-2">2.</span> 环境</h2>
+<div class="outline-text-2" id="text-2">
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">项目</th>
+<th scope="col" class="org-left">说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">操作系统</td>
+<td class="org-left">Arch Linux</td>
+</tr>
+
+<tr>
+<td class="org-left">内核代理</td>
+<td class="org-left">mihomo (v1.19.29)</td>
+</tr>
+
+<tr>
+<td class="org-left">上游路由器</td>
+<td class="org-left">小米路由器, 192.168.31.1</td>
+</tr>
+
+<tr>
+<td class="org-left">本机 IP</td>
+<td class="org-left">192.168.31.194 (WiFi)</td>
+</tr>
+
+<tr>
+<td class="org-left">包管理器</td>
+<td class="org-left">pacman</td>
+</tr>
+
+<tr>
+<td class="org-left">防火墙框架</td>
+<td class="org-left">nftables</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-org829909d" class="outline-2">
+<h2 id="org829909d"><span class="section-number-2">3.</span> 安装 mihomo</h2>
+<div class="outline-text-2" id="text-3">
+<div class="org-src-container">
+<pre class="src src-sh"><code><span style="color: #d09dc0;">pacman</span> -S mihomo
+</code></pre>
+</div>
+
+<p>
+systemd service 由包自带, 无需手写, 默认路径 /etc/mihomo。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org55922ac" class="outline-2">
+<h2 id="org55922ac"><span class="section-number-2">4.</span> 配置文件</h2>
+<div class="outline-text-2" id="text-4">
+</div>
+<div id="outline-container-orgf86cb9d" class="outline-3">
+<h3 id="orgf86cb9d"><span class="section-number-3">4.1.</span> <code>/etc/mihomo/config.yaml</code></h3>
+<div class="outline-text-3" id="text-4-1">
+<p>
+旁路由需要额外改两处 (已在下方标注):<br>
+</p>
+
+<ul class="org-ul">
+<li><code>find-process-mode: off</code> (关闭进程匹配, 路由器场景无需)<br></li>
+<li><code>dns.listen: ":53"</code> (监听所有接口, 供 LAN 设备查询)<br></li>
+</ul>
+
+<div class="org-src-container">
+<pre class="src src-yaml"><code># 填入自己的订阅地址
+proxy-providers:
+  provider1:
+    url: "https://你的订阅地址"
+    type: http
+    interval: 86400
+    proxy: "直连"
+    health-check:
+      enable: true
+      url: "https://www.gstatic.com/generate_204"
+      interval: 300
+    override:
+      additional-prefix: "[provider1]"
+      client-fingerprint: random
+      skip-cert-verify: true
+      udp: true
+
+proxies:
+  - name: "直连"
+    type: direct
+    udp: true
+
+mode: rule
+mixed-port: 7890
+ipv6: true
+allow-lan: true
+unified-delay: true
+tcp-concurrent: true
+external-controller: 127.0.0.1:9090
+secret: ""
+external-controller-cors:
+  allow-private-network: true
+  allow-origins:
+    - tauri://localhost
+    - http://tauri.localhost
+    - https://metacubex.github.io
+    - https://yacd.metacubex.one
+    - https://board.zash.run.place
+external-ui: ui
+external-ui-url: "https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip"
+
+# 旁路由关键配置 ①
+find-process-mode: off
+
+geox-url:
+  mmdb: "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/country.mmdb"
+
+profile:
+  store-selected: true
+  store-fake-ip: true
+
+sniffer:
+  enable: true
+  override-destination: true
+  force-dns-mapping: true
+  parse-pure-ip: true
+  sniff:
+    HTTP:
+      ports: [80, 8080-8880]
+      override-destination: true
+    TLS:
+      ports: [443, 8443]
+      override-destination: true
+    QUIC:
+      ports: [443, 8443]
+      override-destination: true
+  skip-domain:
+    - "Mijia Cloud"
+    - "+.push.apple.com"
+
+tun:
+  enable: true
+  stack: mixed
+  mtu: 1500
+  strict-route: true
+  dns-hijack:
+    - "any:53"
+  auto-route: true
+  auto-redirect: true
+  auto-detect-interface: true
+
+dns:
+  enable: true
+  ipv6: true
+  use-system-hosts: false
+  enhanced-mode: fake-ip
+  # 旁路由关键配置 ②: 监听所有接口的 53 端口
+  listen: ":53"
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-range6: fdfe:dcba:9876::1/64
+  fake-ip-filter:
+    - "Mijia Cloud"
+    - "+.lan"
+    - "+.local"
+    - "+.market.xiaomi.com"
+    - "+.push.apple.com"
+    - "stun.*.*.*"
+    - "stun.*.*"
+    - "time.windows.com"
+    - "time.nist.gov"
+    - "time.apple.com"
+    - "time.asia.apple.com"
+    - "*.ntp.org.cn"
+    - "*.openwrt.pool.ntp.org"
+    - "time1.cloud.tencent.com"
+    - "time.ustc.edu.cn"
+    - "pool.ntp.org"
+    - "ntp.ubuntu.com"
+    - "ntp.aliyun.com"
+    - "ntp1.aliyun.com"
+    - "ntp2.aliyun.com"
+    - "ntp3.aliyun.com"
+    - "ntp4.aliyun.com"
+    - "ntp5.aliyun.com"
+    - "ntp6.aliyun.com"
+    - "ntp7.aliyun.com"
+    - "ntp.*.aliyun.com"
+    - "time1.aliyun.com"
+    - "time2.aliyun.com"
+    - "time3.aliyun.com"
+    - "time4.aliyun.com"
+    - "time5.aliyun.com"
+    - "time6.aliyun.com"
+    - "time7.aliyun.com"
+    - "time.*.aliyun.com"
+    - "*.time.edu.cn"
+    - "time1.apple.com"
+    - "time2.apple.com"
+    - "time3.apple.com"
+    - "time4.apple.com"
+    - "time5.apple.com"
+    - "time6.apple.com"
+    - "time7.apple.com"
+    - "time.*.apple.com"
+    - "time.*.com"
+    - "time1.google.com"
+    - "time2.google.com"
+    - "time3.google.com"
+    - "time4.google.com"
+    - "ntp.*.com"
+    - "music.163.com"
+    - "*.music.163.com"
+    - "*.126.net"
+    - "musicapi.taihe.com"
+    - "music.taihe.com"
+    - "songsearch.kugou.com"
+    - "trackercdn.kugou.com"
+    - "*.kuwo.cn"
+    - "api-jooxtt.sanook.com"
+    - "api.joox.com"
+    - "joox.com"
+    - "y.qq.com"
+    - "*.y.qq.com"
+    - "streamoc.music.tc.qq.com"
+    - "mobileoc.music.tc.qq.com"
+    - "isure.stream.qqmusic.qq.com"
+    - "dl.stream.qqmusic.qq.com"
+    - "aqqmusic.tc.qq.com"
+    - "amobile.music.tc.qq.com"
+    - "*.xiami.com"
+    - "*.music.migu.cn"
+    - "music.migu.cn"
+    - "*.msftconnecttest.com"
+    - "*.msftncsi.com"
+    - "localhost.ptlogin2.qq.com"
+    - "*.*.*.srv.nintendo.net"
+    - "*.*.stun.playstation.net"
+    - "xbox.*.*.microsoft.com"
+    - "*.ipv6.microsoft.com"
+    - "*.*.xboxlive.com"
+    - "speedtest.cros.wr.pvp.net"
+  default-nameserver:
+    - system
+    - 223.5.5.5
+    - 119.29.29.29
+    - 180.76.76.76
+    - 182.254.118.118
+    - 180.184.2.2
+    - 8.8.8.8
+    - 2400:3200::1
+  nameserver-policy:
+    "rule-set:cn_domain":
+      - https://doh.pub/dns-query#skip-cert-verify=true
+      - https://dns.alidns.com/dns-query#skip-cert-verify=true
+  nameserver:
+    - https://doh.pub/dns-query#skip-cert-verify=true
+    - https://dns.alidns.com/dns-query#skip-cert-verify=true
+    - https://223.5.5.5/dns-query#skip-cert-verify=true
+    - tls://223.5.5.5#skip-cert-verify=true
+    - tls://dns.alidns.com#skip-cert-verify=true
+    - tls://dot.pub#skip-cert-verify=true
+    - https://223.6.6.6/dns-query#skip-cert-verify=true&amp;h3=true
+  fallback:
+    - https://8.8.8.8/dns-query#skip-cert-verify=true
+    - https://1.1.1.1/dns-query#skip-cert-verify=true
+  fallback-filter:
+    geoip: true
+    geoip-code: CN
+    ipcidr:
+      - 240.0.0.0/4
+      - 0.0.0.0/32
+      - 127.0.0.1/32
+    domain:
+      - "+.google.com"
+      - "+.facebook.com"
+      - "+.youtube.com"
+      - "+.twitter.com"
+      - "+.googleapis.com"
+      - "+.googleapis.cn"
+      - "+.google.cn"
+      - "+.gvt1.com"
+      - "+.xn--ngstr-lra8j.com"
+  proxy-server-nameserver:
+    - https://doh.pub/dns-query#skip-cert-verify=true
+    - system
+
+proxy-groups:
+  - name: GLOBAL
+    type: select
+    proxies:
+      - 默认
+      - 国内
+      - 其他
+      - 香港
+      - 台湾
+      - 日本
+      - 新加坡
+      - 美国
+      - 其它地区
+      - 全部节点
+      - 自动选择
+
+  - name: 默认
+    type: select
+    proxies: [自动选择, 直连, 香港, 台湾, 日本, 新加坡, 美国, 其它地区, 全部节点]
+
+  - name: 国内
+    type: select
+    proxies: [直连, 默认, 香港, 台湾, 日本, 新加坡, 美国, 其它地区, 全部节点, 自动选择]
+
+  - name: 其他
+    type: select
+    proxies: [默认, 香港, 台湾, 日本, 新加坡, 美国, 其它地区, 全部节点, 自动选择, 直连]
+
+  # 地区自动测速分组
+  - name: 香港
+    type: url-test
+    include-all: true
+    exclude-type: direct
+    url: "https://www.gstatic.com/generate_204"
+    interval: 600
+    tolerance: 50
+    filter: "(?i)港|hk|hongkong|hong kong"
+
+  - name: 台湾
+    type: url-test
+    include-all: true
+    exclude-type: direct
+    url: "https://www.gstatic.com/generate_204"
+    interval: 600
+    tolerance: 50
+    filter: "(?i)台|tw|taiwan"
+
+  - name: 日本
+    type: url-test
+    include-all: true
+    exclude-type: direct
+    url: "https://www.gstatic.com/generate_204"
+    interval: 600
+    tolerance: 50
+    filter: "(?i)日|jp|japan"
+
+  - name: 美国
+    type: url-test
+    include-all: true
+    exclude-type: direct
+    url: "https://www.gstatic.com/generate_204"
+    interval: 600
+    tolerance: 50
+    filter: "(?i)美|us|unitedstates|united states"
+
+  - name: 新加坡
+    type: url-test
+    include-all: true
+    exclude-type: direct
+    url: "https://www.gstatic.com/generate_204"
+    interval: 600
+    tolerance: 50
+    filter: "(?i)(新|sg|singapore)"
+
+  - name: 其它地区
+    type: url-test
+    include-all: true
+    exclude-type: direct
+    url: "https://www.gstatic.com/generate_204"
+    interval: 600
+    tolerance: 50
+    filter: "(?i)^(?!.*(?:港|hk|hongkong|台|tw|taiwan|日|jp|japan|新|sg|singapore|美|us|unitedstates)).*"
+
+  - name: 全部节点
+    type: select
+    include-all: true
+    exclude-type: direct
+
+  - name: 自动选择
+    type: url-test
+    include-all: true
+    exclude-type: direct
+    url: "https://www.gstatic.com/generate_204"
+    interval: 300
+    tolerance: 10
+
+rules:
+  - DOMAIN-SUFFIX,local,DIRECT
+  - DOMAIN,injections.adguard.org,DIRECT
+  - DOMAIN,local.adguard.org,DIRECT
+  # 代理工具直连
+  - PROCESS-NAME,v2ray,DIRECT
+  - PROCESS-NAME,xray,DIRECT
+  - PROCESS-NAME,naive,DIRECT
+  - PROCESS-NAME,trojan,DIRECT
+  - PROCESS-NAME,trojan-go,DIRECT
+  - PROCESS-NAME,ss-local,DIRECT
+  - PROCESS-NAME,privoxy,DIRECT
+  - PROCESS-NAME,leaf,DIRECT
+  # 下载工具直连
+  - PROCESS-NAME,Thunder,DIRECT
+  - PROCESS-NAME,DownloadService,DIRECT
+  - PROCESS-NAME,qBittorrent,DIRECT
+  - PROCESS-NAME,Transmission,DIRECT
+  - PROCESS-NAME,fdm,DIRECT
+  - PROCESS-NAME,aria2c,DIRECT
+  - PROCESS-NAME,uTorrent,DIRECT
+  - PROCESS-NAME,WebTorrent,DIRECT
+  # Apple 服务
+  - DOMAIN-SUFFIX,mzstatic.com,DIRECT
+  - DOMAIN-SUFFIX,apple.com,DIRECT
+  - DOMAIN-SUFFIX,icloud.com,DIRECT
+  - DOMAIN-SUFFIX,icloud-content.com,DIRECT
+  - DOMAIN-SUFFIX,me.com,DIRECT
+  - DOMAIN-SUFFIX,aaplimg.com,DIRECT
+  - DOMAIN-SUFFIX,cdn-apple.com,DIRECT
+  - DOMAIN-SUFFIX,cdn20.com,DIRECT
+  - DOMAIN-SUFFIX,mwcloudcdn.com,DIRECT
+  - DOMAIN-SUFFIX,mwcname.com,DIRECT
+  - DOMAIN-SUFFIX,apple-cloudkit.com,DIRECT
+  - DOMAIN-SUFFIX,apple-mapkit.com,DIRECT
+  - DOMAIN-SUFFIX,blobstore.apple.com,DIRECT
+  - DOMAIN,itunes.apple.com,其他
+  - DOMAIN,sandbox.itunes.apple.com,其他
+  - DOMAIN,developer.apple.com,其他
+  - DOMAIN,ocsp.apple.com,其他
+  - DOMAIN,testflight.apple.com,其他
+  - DOMAIN-SUFFIX,apps.apple.com,其他
+  - DOMAIN,cvws.icloud-content.com,其他
+  - DOMAIN-SUFFIX,apple-dns.net,其他
+  # CDN / 国内平台
+  - DOMAIN-SUFFIX,akadns.net,DIRECT
+  - DOMAIN-SUFFIX,akamaiedge.net,DIRECT
+  - DOMAIN-SUFFIX,edgekey.net,DIRECT
+  - DOMAIN-SUFFIX,epicgames.com,DIRECT
+  - DOMAIN-SUFFIX,steamserver.net,DIRECT
+  - DOMAIN-SUFFIX,steampowered.com,DIRECT
+  - DOMAIN-SUFFIX,synology.com,DIRECT
+  - DOMAIN,cn.bing.com,DIRECT
+  - DOMAIN-SUFFIX,cn,DIRECT
+  - DOMAIN-KEYWORD,-cn,DIRECT
+  # Steam / 其他平台
+  - DOMAIN-SUFFIX,steamcommunity.com,其他
+  - DOMAIN-SUFFIX,digicert.com,其他
+  - DOMAIN,ocsp.comodoca.com,其他
+  - DOMAIN,ocsp.usertrust.com,其他
+  - DOMAIN,ocsp.sectigo.com,其他
+  # 泄漏检测
+  - DOMAIN-SUFFIX,ipleak.net,其他
+  - DOMAIN-SUFFIX,browserscan.net,其他
+  - DOMAIN-SUFFIX,dnsleaktest.com,其他
+  - DOMAIN-SUFFIX,dnsleak.com,其他
+  - DOMAIN-SUFFIX,browserleaks.com,其他
+  - DOMAIN-SUFFIX,browserleaks.org,其他
+  - DOMAIN-SUFFIX,browserleaks.net,其他
+  - DOMAIN-SUFFIX,whoer.net,其他
+  - DOMAIN-SUFFIX,whrq.net,其他
+  # 广告拦截
+  - DOMAIN-KEYWORD,domob,REJECT
+  - DOMAIN-KEYWORD,duomeng,REJECT
+  - DOMAIN-KEYWORD,dwtrack,REJECT
+  - DOMAIN-KEYWORD,mopub,REJECT
+  - DOMAIN-KEYWORD,omgmta,REJECT
+  - DOMAIN-KEYWORD,openx,REJECT
+  - DOMAIN-KEYWORD,umeng,REJECT
+  - DOMAIN-KEYWORD,wlmonitor,REJECT
+  - DOMAIN-SUFFIX,ping0.cc,REJECT
+  - DOMAIN-SUFFIX,appsflyer.com,REJECT
+  - DOMAIN-SUFFIX,doubleclick.net,REJECT
+  - DOMAIN-SUFFIX,mmstat.com,REJECT
+  - DOMAIN-SUFFIX,vungle.com,REJECT
+  # Rule-Set 规则集合
+  - RULE-SET,private_ip,直连,no-resolve
+  - RULE-SET,private_domain,直连
+  - RULE-SET,github_domain,Github
+  - RULE-SET,twitter_domain,Twitter
+  - RULE-SET,youtube_domain,YouTube
+  - RULE-SET,google_domain,Google
+  - RULE-SET,telegram_domain,Telegram
+  - RULE-SET,netflix_domain,NETFLIX
+  - RULE-SET,bilibili_domain,哔哩哔哩
+  - RULE-SET,biliintl_domain,哔哩哔哩
+  - RULE-SET,bahamut_domain,巴哈姆特
+  - RULE-SET,spotify_domain,Spotify
+  - RULE-SET,pixiv_domain,日本
+  - RULE-SET,ehentai_domain,日本
+  - RULE-SET,cn_domain,国内
+  - RULE-SET,geolocation-!cn,其他
+  - RULE-SET,google_ip,Google
+  - RULE-SET,netflix_ip,NETFLIX
+  - RULE-SET,telegram_ip,Telegram
+  - RULE-SET,twitter_ip,Twitter
+  - RULE-SET,cn_ip,国内
+  # 私有/保留地址
+  - IP-CIDR,127.0.0.0/8,DIRECT
+  - IP-CIDR,172.16.0.0/12,DIRECT
+  - IP-CIDR,192.168.0.0/16,DIRECT
+  - IP-CIDR,10.0.0.0/8,DIRECT
+  - IP-CIDR,17.0.0.0/8,DIRECT
+  - IP-CIDR,100.64.0.0/10,DIRECT
+  - IP-CIDR,224.0.0.0/4,DIRECT
+  - IP-CIDR6,fe80::/10,DIRECT
+  # 兜底
+  - GEOIP,CN,DIRECT
+  - MATCH,其他
+
+rule-anchor:
+  ip: &amp;ip {type: http, interval: 86400, behavior: ipcidr, format: mrs}
+  domain: &amp;domain {type: http, interval: 86400, behavior: domain, format: mrs}
+rule-providers:
+  private_domain:
+    &lt;&lt;: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/private.mrs"
+  cn_domain:
+    &lt;&lt;: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/cn.mrs"
+  biliintl_domain:
+    &lt;&lt;: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/biliintl.mrs"
+  ehentai_domain:
+    &lt;&lt;: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/ehentai.mrs"
+  github_domain:
+    &lt;&lt;: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/github.mrs"
+  twitter_domain:
+    &lt;&lt;: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/twitter.mrs"
+  youtube_domain:
+    &lt;&lt;: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/youtube.mrs"
+  google_domain:
+    &lt;&lt;: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/google.mrs"
+  telegram_domain:
+    &lt;&lt;: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/telegram.mrs"
+  netflix_domain:
+    &lt;&lt;: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/netflix.mrs"
+  bilibili_domain:
+    &lt;&lt;: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/bilibili.mrs"
+  bahamut_domain:
+    &lt;&lt;: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/bahamut.mrs"
+  spotify_domain:
+    &lt;&lt;: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/spotify.mrs"
+  pixiv_domain:
+    &lt;&lt;: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/pixiv.mrs"
+  geolocation-!cn:
+    &lt;&lt;: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/geolocation-!cn.mrs"
+  private_ip:
+    &lt;&lt;: *ip
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/private.mrs"
+  cn_ip:
+    &lt;&lt;: *ip
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/cn.mrs"
+  google_ip:
+    &lt;&lt;: *ip
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/google.mrs"
+  netflix_ip:
+    &lt;&lt;: *ip
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/netflix.mrs"
+  twitter_ip:
+    &lt;&lt;: *ip
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/twitter.mrs"
+  telegram_ip:
+    &lt;&lt;: *ip
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/telegram.mrs"
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org44b440a" class="outline-3">
+<h3 id="org44b440a"><span class="section-number-3">4.2.</span> <code>/etc/sysctl.d/99-gateway.conf</code></h3>
+<div class="outline-text-3" id="text-4-2">
+<p>
+开启内核 IPv4/IPv6 转发, 使本机能够为其他设备路由流量。<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-conf"><code><span style="color: #4ae2f0;">net.ipv4.ip_forward</span> = 1
+<span style="color: #4ae2f0;">net.ipv6.conf.all.forwarding</span> = 1
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org61316f4" class="outline-3">
+<h3 id="org61316f4"><span class="section-number-3">4.3.</span> <code>/etc/nftables.conf</code></h3>
+<div class="outline-text-3" id="text-4-3">
+<p>
+MASQUERADE 规则。注意不要包含 mihomo 自身的 <code>auto-redirect</code> 规则 (由 mihomo<br>
+自行管理), 否则 <code>nft -f</code> 加载时会因语法错误使服务启动失败。<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-conf"><code><span style="color: #11c777;">table inet nat</span> {
+    <span style="color: #11c777;">chain postrouting</span> {
+        type nat hook postrouting priority srcnat; policy accept;
+        oifname <span style="color: #2fafff;">"wlp1s0"</span> masquerade
+    }
+}
+</code></pre>
+</div>
+
+<p>
+<code>wlp1s0</code> 为本机的上游网络接口 (WiFi), 按实际情况修改。<br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-org97b8c24" class="outline-2">
+<h2 id="org97b8c24"><span class="section-number-2">5.</span> 操作步骤</h2>
+<div class="outline-text-2" id="text-5">
+<ol class="org-ol">
+<li><p>
+安装 mihomo:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-sh"><code><span style="color: #d09dc0;">pacman</span> -S mihomo
+</code></pre>
+</div></li>
+
+<li><p>
+编辑 <code>/etc/mihomo/config.yaml</code>, 确认两处旁路由关键配置:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-yaml"><code>find-process-mode: off
+dns.listen: ":53"
+</code></pre>
+</div></li>
+
+<li><p>
+创建并应用内核转发配置:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-sh"><code><span style="color: #d09dc0;">cat</span> &gt; /etc/sysctl.d/99-gateway.conf &lt;&lt; <span style="color: #2fafff;">'EOF'</span>
+<span style="color: #2fafff;">net.ipv4.ip_forward = 1
+net.ipv6.conf.all.forwarding = 1
+</span>EOF
+
+<span style="color: #d09dc0;">sysctl</span> --system
+</code></pre>
+</div></li>
+
+<li><p>
+配置 NAT (nftables):<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-sh"><code><span style="color: #ef8386;"># &#20889;&#20837;&#25345;&#20037;&#21270;&#35268;&#21017;</span>
+<span style="color: #d09dc0;">cat</span> &gt; /etc/nftables.conf &lt;&lt; <span style="color: #2fafff;">'EOF'</span>
+<span style="color: #2fafff;">table inet nat {
+    chain postrouting {
+        type nat hook postrouting priority srcnat; policy accept;
+        oifname "wlp1s0" masquerade
+    }
+}
+</span>EOF
+
+<span style="color: #ef8386;"># &#21551;&#29992;&#24182;&#21551;&#21160;</span>
+<span style="color: #d09dc0;">systemctl</span> enable --now nftables
+</code></pre>
+</div>
+
+<p>
+<b>踩坑提醒</b>: 不要用 <code>nft list ruleset &gt; /etc/nftables.conf</code> 导出规则, 这会把<br>
+mihomo 的 auto-redirect 规则也写进去, 其中的 <code>redirect ... return</code> 语法会被<br>
+<code>nft -f</code> 拒绝, 导致 nftables.service 启动失败。<br>
+</p></li>
+
+<li><p>
+启动 mihomo:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-sh"><code><span style="color: #d09dc0;">systemctl</span> enable --now mihomo
+</code></pre>
+</div></li>
+</ol>
+</div>
+</div>
+<div id="outline-container-orga33c564" class="outline-2">
+<h2 id="orga33c564"><span class="section-number-2">6.</span> 客户端设置</h2>
+<div class="outline-text-2" id="text-6">
+<p>
+在上游路由器 (小米路由器) 管理界面, 将本机 MAC 地址绑定静态 IP <code>192.168.31.194</code>,<br>
+防止 IP 变化导致下游设备断网。<br>
+</p>
+
+<p>
+然后, 在需要代理的设备上修改网络配置:<br>
+</p>
+
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">设置</th>
+<th scope="col" class="org-left">IPv4</th>
+<th scope="col" class="org-left">IPv6 (link-local)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">网关</td>
+<td class="org-left"><code>192.168.31.194</code></td>
+<td class="org-left"><code>fe80::xxxx:xxxx:xxxx:xxxx</code></td>
+</tr>
+
+<tr>
+<td class="org-left">DNS</td>
+<td class="org-left"><code>192.168.31.194</code></td>
+<td class="org-left"><code>fe80::xxxx:xxxx:xxxx:xxxx</code></td>
+</tr>
+</tbody>
+</table>
+
+<p>
+IPv6 link-local 地址可通过以下命令在本机查看:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-sh"><code><span style="color: #d09dc0;">ip</span> -6 addr show dev wlp1s0 scope link | <span style="color: #d09dc0;">grep</span> inet6 | <span style="color: #d09dc0;">awk</span> <span style="color: #2fafff;">'{print $2}'</span> | <span style="color: #d09dc0;">cut</span> -d/ -f1
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org7d2ae88" class="outline-2">
+<h2 id="org7d2ae88"><span class="section-number-2">7.</span> 验证</h2>
+<div class="outline-text-2" id="text-7">
+</div>
+<div id="outline-container-org551a8ab" class="outline-3">
+<h3 id="org551a8ab"><span class="section-number-3">7.1.</span> 在本机确认</h3>
+<div class="outline-text-3" id="text-7-1">
+<div class="org-src-container">
+<pre class="src src-sh"><code><span style="color: #ef8386;"># &#30830;&#35748; mihomo &#30417;&#21548; :53 (&#38750; 127.0.0.1)</span>
+<span style="color: #d09dc0;">ss</span> -tulnp | <span style="color: #d09dc0;">grep</span> :53
+<span style="color: #ef8386;"># &#26399;&#26395;&#36755;&#20986;: *:53</span>
+
+<span style="color: #ef8386;"># &#30830;&#35748; TUN &#35774;&#22791;</span>
+<span style="color: #d09dc0;">ip</span> addr show Meta
+<span style="color: #ef8386;"># &#26399;&#26395;&#36755;&#20986;: 198.18.0.1/30 &#21644; fdfe:dcba:9876::1/126</span>
+
+<span style="color: #ef8386;"># &#30830;&#35748;&#31574;&#30053;&#36335;&#30001;</span>
+<span style="color: #d09dc0;">ip</span> rule list | <span style="color: #d09dc0;">grep</span> 2022
+<span style="color: #ef8386;"># &#26399;&#26395;&#36755;&#20986;: table 2022 &#30456;&#20851;&#35268;&#21017;</span>
+
+<span style="color: #ef8386;"># &#30830;&#35748;&#36716;&#21457;</span>
+<span style="color: #d09dc0;">cat</span> /proc/sys/net/ipv4/ip_forward
+<span style="color: #ef8386;"># &#26399;&#26395;&#36755;&#20986;: 1</span>
+
+<span style="color: #ef8386;"># &#30830;&#35748; NAT</span>
+<span style="color: #d09dc0;">nft</span> list table inet nat
+<span style="color: #ef8386;"># &#26399;&#26395;&#36755;&#20986;: masquerade &#35268;&#21017;</span>
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org87dfc65" class="outline-3">
+<h3 id="org87dfc65"><span class="section-number-3">7.2.</span> 在客户端验证</h3>
+<div class="outline-text-3" id="text-7-2">
+<p>
+将设备网关/DNS 指向本机后:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-sh"><code><span style="color: #ef8386;"># DNS &#27844;&#28431;&#26816;&#27979;</span>
+<span style="color: #d09dc0;">curl</span> -s https://ipleak.net/json | <span style="color: #d09dc0;">grep</span> country
+
+<span style="color: #ef8386;"># &#32593;&#39029;&#27983;&#35272;&#22120;&#35775;&#38382; https://ip.sb</span>
+<span style="color: #ef8386;"># &#24212;&#26174;&#31034;&#20195;&#29702;&#33410;&#28857;&#30340; IP</span>
+</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orgf589586" class="outline-2">
+<h2 id="orgf589586"><span class="section-number-2">8.</span> 踩坑记录</h2>
+<div class="outline-text-2" id="text-8">
+</div>
+<div id="outline-container-org0cdc562" class="outline-3">
+<h3 id="org0cdc562"><span class="section-number-3">8.1.</span> nftables 启动失败: <code>redirect ... return</code> 语法错误</h3>
+<div class="outline-text-3" id="text-8-1">
+<p>
+<b>原因</b>: 用 <code>nft list ruleset &gt; /etc/nftables.conf</code> 导出时包含了 mihomo 的<br>
+<code>auto-redirect</code> 规则, 其中 <code>redirect</code> 是终结指令, 后面不能跟 <code>return</code>, <code>nft -f</code><br>
+加载文件时报错退出。<br>
+</p>
+
+<p>
+<b>解法</b>: 手动写 <code>/etc/nftables.conf</code>, 只包含 <code>nat postrouting masquerade</code> 规则。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-orgb71de53" class="outline-3">
+<h3 id="orgb71de53"><span class="section-number-3">8.2.</span> mihomo 修改配置后不生效</h3>
+<div class="outline-text-3" id="text-8-2">
+<p>
+<b>hup reload</b> (<code>systemctl reload mihomo</code>) 不会重新绑定 DNS 监听地址, 修改 <code>dns.listen</code><br>
+后必须执行 ~systemctl restart mihomo~。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-orgb97463b" class="outline-3">
+<h3 id="orgb97463b"><span class="section-number-3">8.3.</span> 客户端 DNS 不通</h3>
+<div class="outline-text-3" id="text-8-3">
+<p>
+检查:<br>
+</p>
+
+<ol class="org-ol">
+<li><code>ss -tulnp | grep :53</code> 是否显示 <code>*:53</code> (不是 <code>127.0.0.1:5335</code>), 如果不是则重启 mihomo<br></li>
+<li>客户端能否 ping 通 <code>192.168.31.194</code><br></li>
+<li>本机防火墙是否放行 53 端口<br></li>
+</ol>
+</div>
+</div>
+<div id="outline-container-orgdf4c834" class="outline-3">
+<h3 id="orgdf4c834"><span class="section-number-3">8.4.</span> IPv6 泄漏</h3>
+<div class="outline-text-3" id="text-8-4">
+<p>
+如果 <code>ipv6.conf.all.forwarding</code> 为 1 但客户端没配 IPv6 网关, IPv6 流量会绕过<br>
+mihomo 直连。两种处理方式:<br>
+</p>
+
+<ol class="org-ol">
+<li>(推荐) 完整配置: 同时设置客户端的 IPv4 + IPv6 网关/DNS 指向本机<br></li>
+<li>简单粗暴: 在 mihomo 中关闭 IPv6 (<code>ipv6: false</code>, <code>dns.ipv6: false</code>)<br></li>
+</ol>
+</div>
+</div>
+<div id="outline-container-org28ef35b" class="outline-3">
+<h3 id="org28ef35b"><span class="section-number-3">8.5.</span> 是否需要 TProxy?</h3>
+<div class="outline-text-3" id="text-8-5">
+<p>
+不需要。当前拓扑下 TUN <code>auto-route</code> + 策略路由表 <code>2022</code> 已经实现透明代理, TProxy<br>
+不会带来额外收益, 反而需要维护 iptables/nftables TPROXY 规则和 fwmark 路由表。<br>
+</p>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

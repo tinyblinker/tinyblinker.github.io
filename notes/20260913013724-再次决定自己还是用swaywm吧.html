@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>再次决定自己还是用swaywm吧</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-11-25 Wed 21:43</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">再次决定自己还是用swaywm吧</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#org1aeef51">1. 简介</a></li>
+<li><a href="#org61f41db">2. 目录结构</a></li>
+<li><a href="#org99f5073">3. 主要组件</a>
+<ul>
+<li><a href="#org5a6ee94">3.1. Sway（窗口管理器）</a></li>
+<li><a href="#orga91768b">3.2. systemd-user 服务</a></li>
+<li><a href="#orgcb93293">3.3. Waybar（状态栏）</a></li>
+<li><a href="#orgff0d6e9">3.4. 输入法</a></li>
+</ul>
+</li>
+<li><a href="#org1a99c21">4. 部署方法</a></li>
+<li><a href="#org558671e">5. 使用</a></li>
+<li><a href="#org535e9ec">6. <span class="done DONE">DONE</span> 用AI基于我的dotfiles写这篇文章</a></li>
+<li><a href="#orgc0963a6">7. gnu stow的应用</a></li>
+<li><a href="#org01f1c0d">8. systemd-user的应用</a></li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-org1aeef51" class="outline-2">
+<h2 id="org1aeef51"><span class="section-number-2">1.</span> 简介</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+本仓库管理我的 Arch Linux 桌面环境配置文件，基于 Sway（Wayland 合成器）构建，使用<br>
+<code>GNU Stow</code> 管理符号链接。针对两台设备（HP 笔记本与迷你主机）提供了独立分支配置，<br>
+并通过 <code>systemd-user</code> 管理桌面服务的生命周期。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org61f41db" class="outline-2">
+<h2 id="org61f41db"><span class="section-number-2">2.</span> 目录结构</h2>
+<div class="outline-text-2" id="text-2">
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">路径</th>
+<th scope="col" class="org-left">说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left"><code>sway_hp_laptop/</code></td>
+<td class="org-left">HP 笔记本的 Sway 配置（=sway= 软链接指向）</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>sway_mini_pc/</code></td>
+<td class="org-left">迷你主机的 Sway 配置</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>sway</code></td>
+<td class="org-left">指向当前使用设备的软链接（默认 HP 笔记本）</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>waybar/</code></td>
+<td class="org-left">顶部状态栏配置与样式</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>alacritty/</code></td>
+<td class="org-left">终端模拟器配置</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>systemd/</code></td>
+<td class="org-left">systemd-user 服务（waybar/swaync 等）</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>systemd_user_environment/</code></td>
+<td class="org-left">flatpak 环境变量配置</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>greetd/</code></td>
+<td class="org-left">登录管理器（greetd + tuigreet）</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>deploy.sh</code></td>
+<td class="org-left">配置文件部署脚本</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>deploy_software.sh</code></td>
+<td class="org-left">软件安装/卸载与系统初始化脚本</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-org99f5073" class="outline-2">
+<h2 id="org99f5073"><span class="section-number-2">3.</span> 主要组件</h2>
+<div class="outline-text-2" id="text-3">
+</div>
+<div id="outline-container-org5a6ee94" class="outline-3">
+<h3 id="org5a6ee94"><span class="section-number-3">3.1.</span> Sway（窗口管理器）</h3>
+<div class="outline-text-3" id="text-3-1">
+<ul class="org-ul">
+<li>主键为 <code>Mod4=（Win），使用 =hjkl</code> 方向键移动焦点<br></li>
+<li>桌面程序：=fuzzel=（启动器）、=waybar=（状态栏）、=swaync=（通知中心）、<br>
+=swayosd=（屏幕显示）、=flameshot=（截图）、=swaylock=（锁屏）<br></li>
+<li>屏幕闲置 300 秒锁屏，600 秒关闭屏幕输出<br></li>
+<li>通过 <code>pre-start.sh</code> / <code>50-systemd-user.conf</code> 将 <code>DISPLAY=、=SWAYSOCK=、
+  =WAYLAND_DISPLAY</code> 等变量导入 systemd-user 环境，并启动 <code>sway-session.target</code><br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orga91768b" class="outline-3">
+<h3 id="orga91768b"><span class="section-number-3">3.2.</span> systemd-user 服务</h3>
+<div class="outline-text-3" id="text-3-2">
+<p>
+所有桌面服务以 <code>PartOf=sway-session.target</code> 绑定，随 Sway 启动/退出自动管理：<br>
+</p>
+
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">服务</th>
+<th scope="col" class="org-left">程序</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left"><code>waybar.service</code></td>
+<td class="org-left">状态栏</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>swaync.service</code></td>
+<td class="org-left">通知中心</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>swayosd-server.service</code></td>
+<td class="org-left">屏幕显示</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>fcitx5.service</code></td>
+<td class="org-left">中文输入法</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-orgcb93293" class="outline-3">
+<h3 id="orgcb93293"><span class="section-number-3">3.3.</span> Waybar（状态栏）</h3>
+<div class="outline-text-3" id="text-3-3">
+<ul class="org-ul">
+<li>顶部栏，包含 Arch 图标（点击打开 fuzzel）、工作区、时钟/空闲抑制、CPU/内存、<br>
+电源配置、电池、系统托盘<br></li>
+<li>点击 CPU/内存模块可在 alacritty 中打开 <code>btop</code><br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgff0d6e9" class="outline-3">
+<h3 id="orgff0d6e9"><span class="section-number-3">3.4.</span> 输入法</h3>
+<div class="outline-text-3" id="text-3-4">
+<ul class="org-ul">
+<li><code>fcitx5</code> + <code>fcitx5-chinese-addons</code>,由 systemd-user 服务启动<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-org1a99c21" class="outline-2">
+<h2 id="org1a99c21"><span class="section-number-2">4.</span> 部署方法</h2>
+<div class="outline-text-2" id="text-4">
+<ol class="org-ol">
+<li><p>
+安装软件（Arch Linux）：<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-sh"><code><span style="color: #d09dc0;">./deploy_software.sh</span>
+</code></pre>
+</div>
+
+<p>
+该脚本会更新系统、安装/卸载软件、启用 <code>sshd=、=greetd=、=firewalld</code> 服务，<br>
+配置 git、生成 SSH 密钥并设置 firewalld 防火墙规则。<br>
+</p></li>
+
+<li><p>
+切换设备配置（如使用迷你主机）：<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-sh"><code><span style="color: #d09dc0;">ln</span> -sfn sway_mini_pc sway
+</code></pre>
+</div></li>
+
+<li><p>
+部署配置文件（使用 GNU Stow 创建符号链接）：<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-sh"><code><span style="color: #d09dc0;">./deploy.sh</span>
+</code></pre>
+</div>
+
+<p>
+该脚本将用户配置（sway、waybar、alacritty、systemd、systemd_user_environment）<br>
+链接到 <code>$HOME=，将 =greetd</code> 链接到系统根目录 =/=（需要 root），并启用 systemd-user<br>
+服务。<br>
+</p></li>
+</ol>
+</div>
+</div>
+<div id="outline-container-org558671e" class="outline-2">
+<h2 id="org558671e"><span class="section-number-2">5.</span> 使用</h2>
+<div class="outline-text-2" id="text-5">
+<ul class="org-ul">
+<li>启动：登录管理器 <code>greetd</code> 会通过 <code>sway-session.sh</code> 启动 Sway；退出 Sway 后，<br>
+<code>sway-session.target</code> 及其依赖的服务会被 systemd 自动停止。<br></li>
+<li>常用快捷键：<br></li>
+</ul>
+
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">快捷键</th>
+<th scope="col" class="org-left">功能</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left"><code>Mod+Return</code></td>
+<td class="org-left">打开终端</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>Mod+d</code></td>
+<td class="org-left">打开应用启动器</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>Mod+Shift+q</code></td>
+<td class="org-left">关闭窗口</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>Mod+Shift+e</code></td>
+<td class="org-left">退出 Sway</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>Mod+Shift+c</code></td>
+<td class="org-left">重载配置</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>Mod+1~0</code></td>
+<td class="org-left">切换工作区</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>Mod+Shift+1~0</code></td>
+<td class="org-left">移动窗口到工作区</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>Mod+Shift+space</code></td>
+<td class="org-left">切换浮动窗口</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>Mod+r</code></td>
+<td class="org-left">进入调整大小模式</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>Print</code></td>
+<td class="org-left">截图（flameshot）</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>Mod+Shift+n</code></td>
+<td class="org-left">打开通知中心</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-org535e9ec" class="outline-2">
+<h2 id="org535e9ec"><span class="section-number-2">6.</span> <span class="done DONE">DONE</span> 用AI基于我的dotfiles写这篇文章</h2>
+</div>
+<div id="outline-container-orgc0963a6" class="outline-2">
+<h2 id="orgc0963a6"><span class="section-number-2">7.</span> gnu stow的应用</h2>
+</div>
+<div id="outline-container-org01f1c0d" class="outline-2">
+<h2 id="org01f1c0d"><span class="section-number-2">8.</span> systemd-user的应用</h2>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

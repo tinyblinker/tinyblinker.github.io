@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>moto_g67_power_踩坑日记_刷机第三方lineageOS</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-10-15 Thu 12:05</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">moto_g67_power_踩坑日记_刷机第三方lineageOS</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#org5eb98f4">1. 小闲话奉劝</a></li>
+<li><a href="#orgcd02772">2. 对unofficial 刷机包的分析</a></li>
+<li><a href="#org6044eb6">3. <code>提醒</code></a></li>
+<li><a href="#org249244a">4. 设备与文件</a>
+<ul>
+<li><a href="#org9e663ba">4.1. 设备信息</a></li>
+<li><a href="#org5a0cb90">4.2. 目录文件清单 (~/Desktop/los)</a></li>
+</ul>
+</li>
+<li><a href="#org1840278">5. 关键结论速查</a>
+<ul>
+<li><a href="#org030242a">5.1. 分区布局 (实测 getvar)</a></li>
+<li><a href="#org33bb570">5.2. A/B 机制要点</a></li>
+</ul>
+</li>
+<li><a href="#org51594fb">6. 踩坑清单 (全部)</a>
+<ul>
+<li><a href="#org6db4bbe">6.1. 坑1: <code>fastboot boot recovery.img</code> 无效</a></li>
+<li><a href="#org7aa5ac9">6.2. 坑2: 误以为 recovery 合并进 boot</a></li>
+<li><a href="#orge6e8d72">6.3. 坑3: recovery 里 adb 显示 unauthorized</a></li>
+<li><a href="#org9f45e53">6.4. 坑4: slot B 未填充 (出厂从未 OTA)</a></li>
+<li><a href="#orgcf29cfb">6.5. 坑5: 用旧版官方固件填充 slot B 是危险的</a></li>
+<li><a href="#org63c951d">6.6. 坑6: copy-partitions 报签名验证失败是正常的</a></li>
+<li><a href="#org9820eff">6.7. 坑7: "Logical partitions are mapped"</a></li>
+<li><a href="#org2313f73">6.8. 坑8: GApps sideload 报 error 21 / status 2 (核心未解坑)</a></li>
+<li><a href="#org4814587">6.9. 坑9: 重签名方案不可行</a></li>
+</ul>
+</li>
+<li><a href="#org832c92e">7. 严谨刷机步骤 (已验证的完整流程)</a>
+<ul>
+<li><a href="#orgb61bcaa">7.1. 阶段0: 前期确认</a></li>
+<li><a href="#orgf18bda7">7.2. 阶段1: 刷 recovery</a></li>
+<li><a href="#orgb092d99">7.3. 阶段2: 同步分区 (仅当从未 OTA / slot B 为空时必做)</a></li>
+<li><a href="#org49044c4">7.4. 阶段3: 格式化并刷 ROM</a></li>
+<li><a href="#orgdef8e6d">7.5. 阶段4: 刷 GApps (当前被坑8阻塞, 见待办)</a></li>
+</ul>
+</li>
+<li><a href="#org1b516ee">8. 待办 / 未解决问题</a></li>
+<li><a href="#org4e8f91c">9. 常用参考命令</a></li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-org5eb98f4" class="outline-2">
+<h2 id="org5eb98f4"><span class="section-number-2">1.</span> 小闲话奉劝</h2>
+<div class="outline-text-2" id="text-1">
+<ul class="org-ul">
+<li><code>!!!!!</code> 第三方ROM刷机注意底包要求<br></li>
+<li><code>!!!!!</code> 这段时间至少四个月别动,只要能运行就别动它<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgcd02772" class="outline-2">
+<h2 id="orgcd02772"><span class="section-number-2">2.</span> 对unofficial 刷机包的分析</h2>
+<div class="outline-text-2" id="text-2">
+<ul class="org-ul">
+<li><a href="20260917115718-分析lineageos_for_moto_g67_power_unofficial_刷机包.html#ID-e5fb4db8-1456-45cc-ac07-83fa8f3dc283">分析lineageos_for_moto_g67_power_unofficial_刷机包</a><br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org6044eb6" class="outline-2">
+<h2 id="org6044eb6"><span class="section-number-2">3.</span> <code>提醒</code></h2>
+<div class="outline-text-2" id="text-3">
+<ul class="org-ul">
+<li><code>!!!!!</code> 第三方系统底包版本不能低于CN的出厂系统底包版本,否则变砖<br></li>
+<li><code>!!!!!</code> 禁止刷回原厂系统,因为当前系统安全更新更new,会导致触发防回滚变砖<br></li>
+<li><code>!!!!!</code> 刷任何第三方ROM后应该同步ab分区(即使用adb sideload两次),让ab分区固件<br>
+版本一致,防止出现那种因为固件异常升级或者降级导致触发"防回滚机制"而导致变砖;<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org249244a" class="outline-2">
+<h2 id="org249244a"><span class="section-number-2">4.</span> 设备与文件</h2>
+<div class="outline-text-2" id="text-4">
+</div>
+<div id="outline-container-org9e663ba" class="outline-3">
+<h3 id="org9e663ba"><span class="section-number-3">4.1.</span> 设备信息</h3>
+<div class="outline-text-3" id="text-4-1">
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">项目</th>
+<th scope="col" class="org-left">值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">型号</td>
+<td class="org-left">XT2533-4 (sku XT2533-4)</td>
+</tr>
+
+<tr>
+<td class="org-left">代号</td>
+<td class="org-left">portov (product: portov_cn, 中国零售 RETCN)</td>
+</tr>
+
+<tr>
+<td class="org-left">出厂系统</td>
+<td class="org-left">Android 16 / W1VT36H.1-51-8 (user/release-keys)(安全更新:2026-07-01,安卓更新2025-9)</td>
+</tr>
+
+<tr>
+<td class="org-left">分区机制</td>
+<td class="org-left">A/B 双槽 (slot-count: 2)</td>
+</tr>
+
+<tr>
+<td class="org-left">Bootloader</td>
+<td class="org-left">MBM-3.0-portov_cn, ST27.7 (2026-06), cid 0x000B=11</td>
+</tr>
+
+<tr>
+<td class="org-left">解锁状态</td>
+<td class="org-left">已解锁 (securestate: flashing_unlocked, verity: enforcing)</td>
+</tr>
+
+<tr>
+<td class="org-left">目标 ROM</td>
+<td class="org-left">LineageOS 23.2 UNOFFICIAL (Android 16 / SDK 36)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-org5a0cb90" class="outline-3">
+<h3 id="org5a0cb90"><span class="section-number-3">4.2.</span> 目录文件清单 (~/Desktop/los)</h3>
+<div class="outline-text-3" id="text-4-2">
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">文件</th>
+<th scope="col" class="org-left">作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">LineageOS23.2-UNOFFICIAL-PORTOV.zip</td>
+<td class="org-left">ROM 本体 (A/B payload.bin 格式, 1.6GB)</td>
+</tr>
+
+<tr>
+<td class="org-left">recovery.img</td>
+<td class="org-left">recovery 分区镜像 (128 MiB, 与分区大小一致)</td>
+</tr>
+
+<tr>
+<td class="org-left">init_boot.img</td>
+<td class="org-left">init_boot 分区镜像 (8 MiB)</td>
+</tr>
+
+<tr>
+<td class="org-left">zip_upziped/</td>
+<td class="org-left">ROM 解包 (payload.bin, META-INF 等)</td>
+</tr>
+
+<tr>
+<td class="org-left">XT2533-4_&hellip;_15_V2VT35.34-33-25_&hellip;_CFC.xml.zip</td>
+<td class="org-left">官方 Android 15 固件 (旧版, 勿用于刷机)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div id="outline-container-org1840278" class="outline-2">
+<h2 id="org1840278"><span class="section-number-2">5.</span> 关键结论速查</h2>
+<div class="outline-text-2" id="text-5">
+</div>
+<div id="outline-container-org030242a" class="outline-3">
+<h3 id="org030242a"><span class="section-number-3">5.1.</span> 分区布局 (实测 getvar)</h3>
+<div class="outline-text-3" id="text-5-1">
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">分区</th>
+<th scope="col" class="org-left">类型</th>
+<th scope="col" class="org-left">大小</th>
+<th scope="col" class="org-left">说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">recovery</td>
+<td class="org-left">raw</td>
+<td class="org-left">128 MiB</td>
+<td class="org-left">独立存在, 非合并进 boot</td>
+</tr>
+
+<tr>
+<td class="org-left">boot</td>
+<td class="org-left">raw</td>
+<td class="org-left">96 MiB</td>
+<td class="org-left">内核 + recovery ramdisk</td>
+</tr>
+
+<tr>
+<td class="org-left">init_boot</td>
+<td class="org-left">raw</td>
+<td class="org-left">8 MiB</td>
+<td class="org-left">generic ramdisk</td>
+</tr>
+
+<tr>
+<td class="org-left">vendor_boot</td>
+<td class="org-left">raw</td>
+<td class="org-left">96 MiB</td>
+<td class="org-left">GKI 厂商 ramdisk + dtb</td>
+</tr>
+</tbody>
+</table>
+
+<ul class="org-ul">
+<li>recovery.img (128 MiB) 对应 recovery 分区, 不是 boot 分区.<br></li>
+<li>recovery.img 是 v4 头,只含 ramdisk (kernel_size=0) 的镜像.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org33bb570" class="outline-3">
+<h3 id="org33bb570"><span class="section-number-3">5.2.</span> A/B 机制要点</h3>
+<div class="outline-text-3" id="text-5-2">
+<ul class="org-ul">
+<li>payload.bin 格式的 ROM 永远刷到 <b>非活跃槽位</b>, 刷完切过去启动.<br></li>
+<li>出厂新机通常只有一个槽被填充; 非活跃槽在第一次官方 OTA 前是空的.<br></li>
+<li>第三方 ROM 的 payload 不含 bootloader / modem 等专有固件分区.<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-org51594fb" class="outline-2">
+<h2 id="org51594fb"><span class="section-number-2">6.</span> 踩坑清单 (全部)</h2>
+<div class="outline-text-2" id="text-6">
+</div>
+<div id="outline-container-org6db4bbe" class="outline-3">
+<h3 id="org6db4bbe"><span class="section-number-3">6.1.</span> 坑1: <code>fastboot boot recovery.img</code> 无效</h3>
+<div class="outline-text-3" id="text-6-1">
+<ul class="org-ul">
+<li>现象: Sending OKAY 后 Booting FAILED, 手机闪 "no valid os".<br></li>
+<li>原因: 该机 bootloader 不支持临时 boot (Moto 常见限制).<br></li>
+<li>解决: 改用 <code>fastboot flash recovery recovery.img</code> 永久刷入.<br></li>
+<li>注意: "no valid os" 只是提示, 临时 boot 不写任何分区, 原系统无损.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org7aa5ac9" class="outline-3">
+<h3 id="org7aa5ac9"><span class="section-number-3">6.2.</span> 坑2: 误以为 recovery 合并进 boot</h3>
+<div class="outline-text-3" id="text-6-2">
+<ul class="org-ul">
+<li>现象: 疑惑 recovery.img 该刷 boot 还是 recovery.<br></li>
+<li>解决: <code>fastboot getvar has-slot:recovery</code> 返回 <code>yes</code>, 且<br>
+recovery.img 大小 (128 MiB) 与 recovery 分区完全一致, boot 是 96 MiB.<br></li>
+<li>结论: 就是刷 recovery 分区.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orge6e8d72" class="outline-3">
+<h3 id="orge6e8d72"><span class="section-number-3">6.3.</span> 坑3: recovery 里 adb 显示 unauthorized</h3>
+<div class="outline-text-3" id="text-6-3">
+<ul class="org-ul">
+<li>现象: 进 recovery 后 <code>adb devices</code> 显示 <code>unauthorized</code>.<br></li>
+<li>原因: recovery 的 adbd 不认系统里授权过的电脑密钥 (数据在 /data, recovery 不挂载).<br></li>
+<li>解决: 无需解决, 在手机上选 <code>Apply update -&gt; Apply from ADB</code> 进入<br>
+sideload 模式后无需授权, 状态变为 <code>sideload</code>.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org9f45e53" class="outline-3">
+<h3 id="org9f45e53"><span class="section-number-3">6.4.</span> 坑4: slot B 未填充 (出厂从未 OTA)</h3>
+<div class="outline-text-3" id="text-6-4">
+<ul class="org-ul">
+<li>现象: <code>fastboot set_active b</code> 报<br>
+"Bootloader images on target slot b are not valid!! There is risk of bricking HW".<br></li>
+<li>原因: 设备出厂后从未 OTA, slot B 的 bootloader 等固件是空的.<br></li>
+<li>解决: 先 sideload copy-partitions 脚本把 slot A 固件复制到 slot B.<br></li>
+<li>警告: 千万别再跑一次 set_active b 强制切换 (会硬砖进 EDL).<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgcf29cfb" class="outline-3">
+<h3 id="orgcf29cfb"><span class="section-number-3">6.5.</span> 坑5: 用旧版官方固件填充 slot B 是危险的</h3>
+<div class="outline-text-3" id="text-6-5">
+<ul class="org-ul">
+<li>现象: 想用目录里 XT2533-4_&hellip;_15_V2VT35.34-33-25 CFC 包填充 slot B.<br></li>
+<li>原因: 该包是 Android 15 (V2VT35), 比设备当前 Android 16 (W1VT36H) 旧,<br>
+且 bootloader 更旧 (ST13.3 vs ST27.7), 降级会触发 anti-rollback 硬砖.<br></li>
+<li>结论: 该 CFC 包只能救砖/回退, 不能用于填充 slot B.用 copy-partitions.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org63c951d" class="outline-3">
+<h3 id="org63c951d"><span class="section-number-3">6.6.</span> 坑6: copy-partitions 报签名验证失败是正常的</h3>
+<div class="outline-text-3" id="text-6-6">
+<ul class="org-ul">
+<li>现象: sideload copy-partitions-20220613-signed.zip 弹<br>
+"Signature verification failed".<br></li>
+<li>原因: 脚本非 LineageOS 官方签名.<br></li>
+<li>解决: 选 Continue / Yes 继续即可.<br></li>
+<li>验证: 跑完后 <code>fastboot set_active b</code> 不再报 not valid, 返回 OKAY.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org9820eff" class="outline-3">
+<h3 id="org9820eff"><span class="section-number-3">6.7.</span> 坑7: "Logical partitions are mapped"</h3>
+<div class="outline-text-3" id="text-6-7">
+<ul class="org-ul">
+<li>现象: sideload ROM 报<br>
+"Logical partitions are mapped. Please reboot recovery before installing an OTA update".<br></li>
+<li>原因: format data / 前序操作使 super 内的逻辑分区处于已映射状态.<br></li>
+<li>解决: <code>Advanced -&gt; Reboot to recovery</code> 后再 sideload, 中间不要再做别的操作.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org2313f73" class="outline-3">
+<h3 id="org2313f73"><span class="section-number-3">6.8.</span> 坑8: GApps sideload 报 error 21 / status 2 (核心未解坑)</h3>
+<div class="outline-text-3" id="text-6-8">
+<ul class="org-ul">
+<li>现象: 刷 MindTheGapps 全部版本都报<br>
+"failed to verify whole-file signature / Signature verification failed / error:21 / status 2".<br></li>
+<li>原因: ROM 是 user 版 (指纹 &hellip;:user/release-keys), LineageOS recovery 源码里<br>
+<code>ask_to_continue_unverified()</code> 在 user 版直接 return false, <b>不弹<br>
+"Install anyway?" 提示</b>, 直接拒绝非本 key 签名的包.<br></li>
+<li>关键: 刷 ROM 本体能成功 (同 key), GApps (外 key) 被拒.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org4814587" class="outline-3">
+<h3 id="org4814587"><span class="section-number-3">6.9.</span> 坑9: 重签名方案不可行</h3>
+<div class="outline-text-3" id="text-6-9">
+<ul class="org-ul">
+<li>现象: 想用 ROM 签名密钥给 GApps 重签名.<br></li>
+<li>原因: ROM 用作者自定义私钥 (otacert: CN=Quartz750, email=123@456.com),<br>
+非公开 test-key; 重签名必须持有私钥, 我们只有公钥, 密码学上无法完成.<br></li>
+<li>结论: 方案四死路, 需改走其他路线 (见"待办").<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-org832c92e" class="outline-2">
+<h2 id="org832c92e"><span class="section-number-2">7.</span> 严谨刷机步骤 (已验证的完整流程)</h2>
+<div class="outline-text-2" id="text-7">
+</div>
+<div id="outline-container-orgb61bcaa" class="outline-3">
+<h3 id="orgb61bcaa"><span class="section-number-3">7.1.</span> 阶段0: 前期确认</h3>
+<div class="outline-text-3" id="text-7-1">
+<div class="org-src-container">
+<pre class="src src-sh"><code><span style="color: #d09dc0;">adb</span> devices -l            <span style="color: #ef8386;"># &#30830;&#35748;&#35774;&#22791;&#22312;&#32447;</span>
+<span style="color: #d09dc0;">fastboot</span> getvar current-slot
+<span style="color: #d09dc0;">fastboot</span> getvar has-slot:recovery   <span style="color: #ef8386;"># &#30830;&#35748;&#26159;&#21542;&#26377;&#29420;&#31435; recovery &#20998;&#21306;</span>
+<span style="color: #d09dc0;">fastboot</span> getvar slot-successful:b   <span style="color: #ef8386;"># &#21028;&#26029; slot B &#26159;&#21542;&#26366;&#21551;&#21160; (&#21028;&#26029;&#26159;&#21542; OTA &#36807;)</span>
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgf18bda7" class="outline-3">
+<h3 id="orgf18bda7"><span class="section-number-3">7.2.</span> 阶段1: 刷 recovery</h3>
+<div class="outline-text-3" id="text-7-2">
+<div class="org-src-container">
+<pre class="src src-sh"><code><span style="color: #d09dc0;">adb</span> reboot bootloader
+<span style="color: #d09dc0;">fastboot</span> devices          <span style="color: #ef8386;"># &#24212;&#26174;&#31034; fastboot (&#19981;&#24102; d)</span>
+<span style="color: #d09dc0;">fastboot</span> flash recovery recovery.img   <span style="color: #ef8386;"># &#27704;&#20037;&#21047;&#20837;, &#19981;&#35201;&#29992; fastboot boot</span>
+<span style="color: #d09dc0;">fastboot</span> reboot recovery
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgb092d99" class="outline-3">
+<h3 id="orgb092d99"><span class="section-number-3">7.3.</span> 阶段2: 同步分区 (仅当从未 OTA / slot B 为空时必做)</h3>
+<div class="outline-text-3" id="text-7-3">
+<div class="org-src-container">
+<pre class="src src-sh"><code><span style="color: #ef8386;"># recovery &#20013;: Apply update -&gt; Apply from ADB</span>
+<span style="color: #d09dc0;">adb</span> sideload copy-partitions-20220613-signed.zip   <span style="color: #ef8386;"># &#24377;&#31614;&#21517;&#22833;&#36133;&#36873; Continue</span>
+<span style="color: #ef8386;"># recovery &#20013;: Advanced -&gt; Reboot to recovery</span>
+<span style="color: #ef8386;"># &#39564;&#35777;: fastboot set_active b &#24212;&#36820;&#22238; OKAY &#32780;&#38750; not valid</span>
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org49044c4" class="outline-3">
+<h3 id="org49044c4"><span class="section-number-3">7.4.</span> 阶段3: 格式化并刷 ROM</h3>
+<div class="outline-text-3" id="text-7-4">
+<div class="org-src-container">
+<pre class="src src-sh"><code><span style="color: #ef8386;"># recovery &#20013;: Factory reset -&gt; Format data</span>
+<span style="color: #ef8386;"># recovery &#20013;: Advanced -&gt; Reboot to recovery (&#37325;&#35201;, &#36991;&#20813;&#36923;&#36753;&#20998;&#21306;&#24050;&#26144;&#23556;)</span>
+<span style="color: #ef8386;"># recovery &#20013;: Apply update -&gt; Apply from ADB</span>
+<span style="color: #d09dc0;">adb</span> sideload LineageOS23.2-UNOFFICIAL-PORTOV.zip
+<span style="color: #ef8386;"># &#21047;&#23436; Reboot system now; ROM &#20250;&#34987;&#20889;&#21040;&#38750;&#27963;&#36291;&#27133;&#24182;&#20999;&#36807;&#21435;&#21551;&#21160;</span>
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgdef8e6d" class="outline-3">
+<h3 id="orgdef8e6d"><span class="section-number-3">7.5.</span> 阶段4: 刷 GApps (当前被坑8阻塞, 见待办)</h3>
+<div class="outline-text-3" id="text-7-5">
+<div class="org-src-container">
+<pre class="src src-sh"><code><span style="color: #d09dc0;">adb</span> sideload MindTheGapps-16.0.0-arm64-XXXXXXXX.zip
+<span style="color: #ef8386;"># &#33509;&#24050;&#24320;&#36807;&#26426;&#20877;&#34917;&#21047; GApps, &#38656;&#20877; Factory reset / Format data</span>
+</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org1b516ee" class="outline-2">
+<h2 id="org1b516ee"><span class="section-number-2">8.</span> 待办 / 未解决问题</h2>
+<div class="outline-text-2" id="text-8">
+<ul class="org-ul">
+<li class="off"><code>[&nbsp;]</code> GApps 安装 (被 user 版 recovery 的签名校验阻塞).可选路线:<br>
+<ol class="org-ol">
+<li>找作者 eng.rlcc 要 userdebug recovery 或签名私钥 (最省事);<br></li>
+<li>把 recovery.img 解包改 <code>ro.build.type=user</code> 为 <code>userdebug</code> 后刷回<br>
+(让 recovery 弹 Install anyway 提示);<br></li>
+<li>走 Magisk (fastboot 刷修补后的 init_boot.img 获得 root), 再通过<br>
+root 手动装 GApps.(!!!目前只考虑不root配合shizuku使用,root之后攻击面太大)<br></li>
+</ol></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org4e8f91c" class="outline-2">
+<h2 id="org4e8f91c"><span class="section-number-2">9.</span> 常用参考命令</h2>
+<div class="outline-text-2" id="text-9">
+<div class="org-src-container">
+<pre class="src src-sh"><code><span style="color: #d09dc0;">fastboot</span> getvar all                       <span style="color: #ef8386;"># &#26597;&#30475;&#20840;&#37096; bootloader &#21464;&#37327;</span>
+<span style="color: #d09dc0;">fastboot</span> set_active a                     <span style="color: #ef8386;"># &#20999;&#22238; slot A</span>
+<span style="color: #d09dc0;">adb</span> shell getprop ro.boot.slot_suffix     <span style="color: #ef8386;"># &#26597;&#30475;&#24403;&#21069;&#27133;&#20301; (&#24320;&#26426;&#21518;)</span>
+<span style="color: #d09dc0;">unzip</span> -p &lt;rom.zip&gt; META-INF/com/android/metadata   <span style="color: #ef8386;"># &#26597;&#30475; ROM &#20803;&#25968;&#25454;</span>
+<span style="color: #d09dc0;">openssl</span> x509 -in &lt;otacert&gt; -noout -subject -fingerprint -sha256  <span style="color: #ef8386;"># &#26597;&#30475;&#31614;&#21517;&#35777;&#20070;</span>
+</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

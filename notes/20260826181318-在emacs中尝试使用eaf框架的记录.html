@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>在emacs中尝试使用EAF框架的记录</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-09-13 Sun 00:10</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">在emacs中尝试使用EAF框架的记录</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#orga1049dd">1. 背景</a></li>
+<li><a href="#org0107f43">2. 过程</a>
+<ul>
+<li><a href="#orgf65c680">2.1. 项目介绍</a></li>
+<li><a href="#org914aac6">2.2. 尝试use-packge的:vc安装EAF</a></li>
+<li><a href="#org5b09695">2.3. 按照README来做</a></li>
+<li><a href="#org24ce0f0">2.4. 糟糕的体验</a></li>
+</ul>
+</li>
+<li><a href="#org555ae74">3. 总结</a></li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-orga1049dd" class="outline-2">
+<h2 id="orga1049dd"><span class="section-number-2">1.</span> 背景</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+早上去咖啡馆,突然想起来折腾一下EAF框架,看emacs直接调用浏览器的体验,结果可谓是很抽象,<br>
+其实本来打算好好写那个自制的cava的,可是忍不住无聊折腾的手&hellip;.Orz,下次一定<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org0107f43" class="outline-2">
+<h2 id="org0107f43"><span class="section-number-2">2.</span> 过程</h2>
+<div class="outline-text-2" id="text-2">
+</div>
+<div id="outline-container-orgf65c680" class="outline-3">
+<h3 id="orgf65c680"><span class="section-number-3">2.1.</span> 项目介绍</h3>
+<div class="outline-text-3" id="text-2-1">
+<ul class="org-ul">
+<li><p>
+what is EAF(emacs-application-framework)?<br>
+Emacs, the extensible text editor, is more than 45 years old. It is older than virtually all operating systems people use today, almost as old as the first UNIX system. During the decades of development, the world's brightest hackers have contributed their intelligence and creativity. Together they've constructed the most comprehensive and richest ecosystem that you can find in any software to date.<br>
+</p>
+
+<p>
+If you are a hacker who works with numerous languages and text, who's keyboard-driven and desires maximum freedom, extensibility, and introspectivity over your tool, maybe to the extent of living in it, Emacs will be your best bet.<br>
+</p>
+
+<p>
+Unfortunately, this 45 years of age is also one of the greatest disadvantages of Emacs. Comparing with modern software, Emacs lacks performance. Specifically Emacs Lisp lacks performance. It doesn't have proper multithreading and its graphical capabilities are seriously limited. It is far from what you'd expect from any GUI application today (such as IDEA or VSCode). You may think that Emacs, as a text-centric editor, doesn't need them, but have you ever run into a situation that, you sit comfortably typing commands and doing your Emacs sorcery, but can't help but ponder:<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-quote"><code>What if Emacs had a real browser?
+What if this PDF or video file could be viewed efficiently without leaving Emacs?
+</code></pre>
+</div>
+
+<p>
+Emacs, although infinitely extensible in text, is very limited in graphics. It shouldn't have to be this way. However, Emacs Lisp is the integral part of the Emacs culture, it carries decades of history with itself, it is what makes Emacs special. It is irreplaceable.<br>
+</p>
+
+<p>
+The vision of the Emacs Application Framework (EAF) project is, while fully retaining the rich history, culture, and ecosystem of Emacs and Emacs Lisp, to open up completely new doors to the ecosystems of Python, Qt6, and even JavaScript. EAF extends Emacs to the world of modern graphics, but still preserving the extensibility and customizability of Emacs. It will be the key to ultimately Live in Emacs.<br>
+</p></li>
+<li>项目链接:<a href="https://github.com/emacs-eaf/emacs-application-framework">github地址</a><br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org914aac6" class="outline-3">
+<h3 id="org914aac6"><span class="section-number-3">2.2.</span> 尝试use-packge的:vc安装EAF</h3>
+<div class="outline-text-3" id="text-2-2">
+<p>
+本来想直接用use-package的:vc选项安装,结果却是发现越想越复杂,浅克隆根本不支持,自己也不想修改太多(其实是不会修改)<br>
+emacs的原生use-package的行为,所以整体了一个圈后就又绕回来了,所以还是得按照README上的指导配置来做,别不听劝<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org5b09695" class="outline-3">
+<h3 id="org5b09695"><span class="section-number-3">2.3.</span> 按照README来做</h3>
+<div class="outline-text-3" id="text-2-3">
+<p>
+1.先克隆仓库到指定文件夹<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">git</span> clone --depth=1 -b master https://github.com/emacs-eaf/emacs-application-framework.git ~/.emacs.d/site-lisp/emacs-application-framework/
+</code></pre>
+</div>
+<p>
+2.然后执行命令<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">cd</span> emacs-application-framework
+<span style="color: #d09dc0;">chmod</span> +x ./install-eaf.py
+<span style="color: #d09dc0;">./install-eaf.py</span>
+</code></pre>
+</div>
+<p>
+3.加载EAF core:<br>
+方法一:<br>
+手动加载'load-path<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp"><code>(add-to-list 'load-path <span style="color: #2fafff;">"~/.emacs.d/site-lisp/emacs-application-framework/"</span>)
+(<span style="color: #79a8ff;">require</span> '<span style="color: #b6a0ff;">eaf</span>)
+</code></pre>
+</div>
+<p>
+方法二:<br>
+use-package宏从'load-path加载eaf<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp"><code>(<span style="color: #79a8ff;">use-package</span> eaf
+  <span style="color: #feacd0;">:load-path</span> <span style="color: #2fafff;">"~/.emacs.d/site-lisp/emacs-application-framework"</span>
+  <span style="color: #feacd0;">:custom</span>
+  <span style="color: #ef8386;">; </span><span style="color: #ef8386;">See https://github.com/emacs-eaf/emacs-application-framework/wiki/Customization
+</span>  (eaf-browser-continue-where-left-off t)
+  (eaf-browser-enable-adblocker t)
+  (browse-url-browser-function 'eaf-open-browser)
+  <span style="color: #feacd0;">:config</span>
+  (<span style="color: #79a8ff;">defalias</span> '<span style="color: #f78fe7;">browse-web</span> #'eaf-open-browser)
+  (eaf-bind-key scroll_up <span style="color: #2fafff;">"C-n"</span> eaf-pdf-viewer-keybinding)
+  (eaf-bind-key scroll_down <span style="color: #2fafff;">"C-p"</span> eaf-pdf-viewer-keybinding)
+  (eaf-bind-key take_photo <span style="color: #2fafff;">"p"</span> eaf-camera-keybinding)
+  (eaf-bind-key nil <span style="color: #2fafff;">"M-q"</span> eaf-browser-keybinding)) <span style="color: #ef8386;">;; </span><span style="color: #ef8386;">unbind, see more in the Wiki</span>
+</code></pre>
+</div>
+<p>
+4.Load EAF apps<br>
+for examples:<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp"><code>(<span style="color: #79a8ff;">require</span> '<span style="color: #b6a0ff;">eaf-browser</span>)
+(<span style="color: #79a8ff;">require</span> '<span style="color: #b6a0ff;">eaf-pdf-viewer</span>)
+</code></pre>
+</div>
+<p>
+5.Customize EAF according to the github official wiki<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org24ce0f0" class="outline-3">
+<h3 id="org24ce0f0"><span class="section-number-3">2.4.</span> 糟糕的体验</h3>
+<div class="outline-text-3" id="text-2-4">
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">cd</span> emacs-application-framework
+<span style="color: #d09dc0;">chmod</span> +x ./install-eaf.py
+<span style="color: #d09dc0;">./install-eaf.py</span>
+</code></pre>
+</div>
+<p>
+这段命令中的python脚本如下<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-python"><code>  <span style="color: #ef8386;">#</span><span style="color: #ef8386;">!/usr/bin/env python3
+</span>
+<span style="color: #79a8ff;">import</span> argparse
+<span style="color: #79a8ff;">import</span> datetime
+<span style="color: #79a8ff;">import</span> json
+<span style="color: #79a8ff;">import</span> os
+<span style="color: #79a8ff;">import</span> subprocess
+<span style="color: #79a8ff;">import</span> sys
+<span style="color: #79a8ff;">import</span> sysconfig
+<span style="color: #79a8ff;">from</span> shutil <span style="color: #79a8ff;">import</span> rmtree, which
+
+<span style="color: #4ae2f0;">parser</span> <span style="color: #ffffff;">=</span> argparse.ArgumentParser()
+parser.add_argument(<span style="color: #2fafff;">"--install-all-apps"</span>, action<span style="color: #ffffff;">=</span><span style="color: #2fafff;">"store_true"</span>,
+                    <span style="color: #feacd0;">help</span><span style="color: #ffffff;">=</span><span style="color: #2fafff;">'install/update all available applications'</span>)
+parser.add_argument(<span style="color: #2fafff;">"--install-core-deps"</span>, action<span style="color: #ffffff;">=</span><span style="color: #2fafff;">"store_true"</span>,
+                    <span style="color: #feacd0;">help</span><span style="color: #ffffff;">=</span><span style="color: #2fafff;">'only install/update core dependencies'</span>)
+parser.add_argument(<span style="color: #2fafff;">"-i"</span>, <span style="color: #2fafff;">"--install"</span>, nargs<span style="color: #ffffff;">=</span><span style="color: #2fafff;">'+'</span>, default<span style="color: #ffffff;">=</span>[],
+                    <span style="color: #feacd0;">help</span><span style="color: #ffffff;">=</span><span style="color: #2fafff;">'only install/update apps listed here'</span>)
+parser.add_argument(<span style="color: #2fafff;">"--install-new-apps"</span>, action<span style="color: #ffffff;">=</span><span style="color: #2fafff;">"store_true"</span>,
+                    <span style="color: #feacd0;">help</span><span style="color: #ffffff;">=</span><span style="color: #2fafff;">'also install previously uninstalled or new applications'</span>)
+parser.add_argument(<span style="color: #2fafff;">"-f"</span>, <span style="color: #2fafff;">"--force"</span>, action<span style="color: #ffffff;">=</span><span style="color: #2fafff;">"store_true"</span>,
+                    <span style="color: #feacd0;">help</span><span style="color: #ffffff;">=</span><span style="color: #2fafff;">"force install/update app dependencies even if apps are already up-to-date"</span>)
+parser.add_argument(<span style="color: #2fafff;">"--ignore-core-deps"</span>, action<span style="color: #ffffff;">=</span><span style="color: #2fafff;">"store_true"</span>,
+                    <span style="color: #feacd0;">help</span><span style="color: #ffffff;">=</span><span style="color: #2fafff;">'ignore core dependencies'</span>)
+parser.add_argument(<span style="color: #2fafff;">"--ignore-sys-deps"</span>, action<span style="color: #ffffff;">=</span><span style="color: #2fafff;">"store_true"</span>,
+                    <span style="color: #feacd0;">help</span><span style="color: #ffffff;">=</span><span style="color: #2fafff;">'ignore system dependencies'</span>)
+parser.add_argument(<span style="color: #2fafff;">"--ignore-py-deps"</span>, action<span style="color: #ffffff;">=</span><span style="color: #2fafff;">"store_true"</span>,
+                    <span style="color: #feacd0;">help</span><span style="color: #ffffff;">=</span><span style="color: #2fafff;">'ignore python dependencies'</span>)
+parser.add_argument(<span style="color: #2fafff;">"--ignore-node-deps"</span>, action<span style="color: #ffffff;">=</span><span style="color: #2fafff;">"store_true"</span>,
+                    <span style="color: #feacd0;">help</span><span style="color: #ffffff;">=</span><span style="color: #2fafff;">'ignore node dependencies'</span>)
+parser.add_argument(<span style="color: #2fafff;">"--git-full-clone"</span>, action<span style="color: #ffffff;">=</span><span style="color: #2fafff;">"store_true"</span>,
+                    <span style="color: #feacd0;">help</span><span style="color: #ffffff;">=</span><span style="color: #2fafff;">'during installation, conduct a full clone to preserve git logs'</span>)
+parser.add_argument(<span style="color: #2fafff;">"--app-drop-local-edit"</span>, action<span style="color: #ffffff;">=</span><span style="color: #2fafff;">"store_true"</span>,
+                    <span style="color: #feacd0;">help</span><span style="color: #ffffff;">=</span><span style="color: #2fafff;">'during installation, local changes to app repos will be hard reset'</span>)
+parser.add_argument(<span style="color: #2fafff;">"--app-save-local-edit"</span>, action<span style="color: #ffffff;">=</span><span style="color: #2fafff;">"store_true"</span>,
+                    <span style="color: #feacd0;">help</span><span style="color: #ffffff;">=</span><span style="color: #2fafff;">'compared with --app-drop-local-edit, this option will stash your changes'</span>)
+<span style="color: #4ae2f0;">args</span> <span style="color: #ffffff;">=</span> parser.parse_args()
+
+<span style="color: #4ae2f0;">NPM_CMD</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">"npm.cmd"</span> <span style="color: #79a8ff;">if</span> sys.platform <span style="color: #ffffff;">==</span> <span style="color: #2fafff;">"win32"</span> <span style="color: #79a8ff;">else</span> <span style="color: #2fafff;">"npm"</span>
+<span style="color: #4ae2f0;">PIP_CMD</span> <span style="color: #ffffff;">=</span> [sys.executable, <span style="color: #2fafff;">"-m"</span>, <span style="color: #2fafff;">"pip"</span>]
+
+<span style="color: #79a8ff;">class</span> <span style="color: #11c777;">bcolors</span>:
+    <span style="color: #4ae2f0;">HEADER</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">'</span><span style="color: #b6a0ff;">\033</span><span style="color: #2fafff;">[95m'</span>
+    <span style="color: #4ae2f0;">OKBLUE</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">'</span><span style="color: #b6a0ff;">\033</span><span style="color: #2fafff;">[94m'</span>
+    <span style="color: #4ae2f0;">OKCYAN</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">'</span><span style="color: #b6a0ff;">\033</span><span style="color: #2fafff;">[96m'</span>
+    <span style="color: #4ae2f0;">OKGREEN</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">'</span><span style="color: #b6a0ff;">\033</span><span style="color: #2fafff;">[92m'</span>
+    <span style="color: #4ae2f0;">WARNING</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">'</span><span style="color: #b6a0ff;">\033</span><span style="color: #2fafff;">[93m'</span>
+    <span style="color: #4ae2f0;">FAIL</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">'</span><span style="color: #b6a0ff;">\033</span><span style="color: #2fafff;">[91m'</span>
+    <span style="color: #4ae2f0;">ENDC</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">'</span><span style="color: #b6a0ff;">\033</span><span style="color: #2fafff;">[0m'</span>
+    <span style="color: #4ae2f0;">BOLD</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">'</span><span style="color: #b6a0ff;">\033</span><span style="color: #2fafff;">[1m'</span>
+    <span style="color: #4ae2f0;">UNDERLINE</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">'</span><span style="color: #b6a0ff;">\033</span><span style="color: #2fafff;">[4m'</span>
+
+<span style="color: #4ae2f0;">script_path</span> <span style="color: #ffffff;">=</span> os.path.dirname(os.path.realpath(__file__))
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">get_available_apps_dict</span>():
+    <span style="color: #79a8ff;">with</span> <span style="color: #feacd0;">open</span>(os.path.join(script_path, <span style="color: #2fafff;">'applications.json'</span>)) <span style="color: #79a8ff;">as</span> f:
+        <span style="color: #4ae2f0;">info</span> <span style="color: #ffffff;">=</span> json.load(f)
+    <span style="color: #4ae2f0;">apps_dict</span> <span style="color: #ffffff;">=</span> {}
+    <span style="color: #79a8ff;">for</span> app_name, app_spec_dict <span style="color: #79a8ff;">in</span> info.items():
+        <span style="color: #79a8ff;">if</span> app_spec_dict[<span style="color: #2fafff;">"type"</span>] <span style="color: #ffffff;">==</span> <span style="color: #2fafff;">"app"</span>:
+            <span style="color: #4ae2f0;">apps_dict</span>[app_name] <span style="color: #ffffff;">=</span> app_spec_dict
+    <span style="color: #79a8ff;">return</span> apps_dict
+
+<span style="color: #4ae2f0;">available_apps_dict</span> <span style="color: #ffffff;">=</span> get_available_apps_dict()
+
+<span style="color: #4ae2f0;">install_failed_sys</span> <span style="color: #ffffff;">=</span> []
+<span style="color: #4ae2f0;">install_failed_pys</span> <span style="color: #ffffff;">=</span> []
+<span style="color: #4ae2f0;">install_failed_npm_globals</span> <span style="color: #ffffff;">=</span> []
+<span style="color: #4ae2f0;">install_failed_apps</span> <span style="color: #ffffff;">=</span> []
+
+<span style="color: #4ae2f0;">important_messages</span> <span style="color: #ffffff;">=</span> [
+    <span style="color: #2fafff;">"[EAF] Please run 'git pull &amp;&amp; ./install-eaf.py' (M-x eaf-install-and-update) to update EAF and their dependencies."</span>,
+    <span style="color: #2fafff;">"[EAF] Refer to dependencies.json for the list of dependencies installed on your system."</span>
+]
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">run_command</span>(command, path<span style="color: #ffffff;">=</span>script_path, ensure_pass<span style="color: #ffffff;">=</span><span style="color: #b6a0ff;">True</span>, get_result<span style="color: #ffffff;">=</span><span style="color: #b6a0ff;">False</span>):
+    <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"[EAF] Running"</span>, <span style="color: #2fafff;">' '</span>.join(command), <span style="color: #2fafff;">"@"</span>, path)
+
+    <span style="color: #ef8386;"># </span><span style="color: #ef8386;">Throw exception if command not found,
+</span>    <span style="color: #ef8386;"># </span><span style="color: #ef8386;">We found install-eaf.py still can work even it not found npm in system.
+</span>    <span style="color: #79a8ff;">if</span> (<span style="color: #79a8ff;">not</span> which(command[0])) <span style="color: #79a8ff;">and</span> ensure_pass:
+        <span style="color: #79a8ff;">raise</span> <span style="color: #11c777;">Exception</span>(f<span style="color: #2fafff;">"Not found command: </span>{command[0]}<span style="color: #2fafff;">"</span>)
+
+    <span style="color: #ef8386;"># </span><span style="color: #ef8386;">Use LC_ALL=C to make sure command output use English.
+</span>    <span style="color: #ef8386;"># </span><span style="color: #ef8386;">Then we can use English keyword to check command output.
+</span>    <span style="color: #4ae2f0;">english_env</span> <span style="color: #ffffff;">=</span> os.environ.copy()
+    <span style="color: #4ae2f0;">english_env</span>[<span style="color: #2fafff;">'LC_ALL'</span>] <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">'C'</span>
+
+    <span style="color: #79a8ff;">if</span> get_result:
+        <span style="color: #4ae2f0;">process</span> <span style="color: #ffffff;">=</span> subprocess.Popen(command, env <span style="color: #ffffff;">=</span> english_env, stdin <span style="color: #ffffff;">=</span> subprocess.PIPE,
+                                   universal_newlines<span style="color: #ffffff;">=</span><span style="color: #b6a0ff;">True</span>, text<span style="color: #ffffff;">=</span><span style="color: #b6a0ff;">True</span>, cwd<span style="color: #ffffff;">=</span>path,
+                                   stdout <span style="color: #ffffff;">=</span> subprocess.PIPE)
+    <span style="color: #79a8ff;">else</span>:
+        <span style="color: #4ae2f0;">process</span> <span style="color: #ffffff;">=</span> subprocess.Popen(command, env <span style="color: #ffffff;">=</span> english_env, stdin <span style="color: #ffffff;">=</span> subprocess.PIPE,
+                                   universal_newlines<span style="color: #ffffff;">=</span><span style="color: #b6a0ff;">True</span>, text<span style="color: #ffffff;">=</span><span style="color: #b6a0ff;">True</span>, cwd<span style="color: #ffffff;">=</span>path)
+    process.wait()
+    <span style="color: #79a8ff;">if</span> process.returncode <span style="color: #ffffff;">!=</span> 0 <span style="color: #79a8ff;">and</span> ensure_pass:
+        <span style="color: #79a8ff;">raise</span> <span style="color: #11c777;">Exception</span>(process.returncode)
+    <span style="color: #79a8ff;">if</span> get_result:
+        <span style="color: #79a8ff;">return</span> process.stdout.readlines()
+    <span style="color: #79a8ff;">else</span>:
+        <span style="color: #79a8ff;">return</span> <span style="color: #b6a0ff;">None</span>
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">prune_existing_sys_deps</span>(deps_list):
+    <span style="color: #4ae2f0;">remove_deps</span> <span style="color: #ffffff;">=</span> []
+    <span style="color: #79a8ff;">for</span> dep <span style="color: #79a8ff;">in</span> deps_list:
+        <span style="color: #79a8ff;">if</span> <span style="color: #2fafff;">"node"</span> <span style="color: #79a8ff;">in</span> dep <span style="color: #79a8ff;">and</span> which(<span style="color: #2fafff;">"node"</span>):
+            remove_deps.append(dep)
+        <span style="color: #79a8ff;">elif</span> <span style="color: #2fafff;">"npm"</span> <span style="color: #79a8ff;">in</span> dep <span style="color: #79a8ff;">and</span> which(<span style="color: #2fafff;">"npm"</span>):
+            remove_deps.append(dep)
+    <span style="color: #79a8ff;">return</span> <span style="color: #feacd0;">list</span>(<span style="color: #feacd0;">set</span>(deps_list) <span style="color: #ffffff;">-</span> <span style="color: #feacd0;">set</span>(remove_deps))
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">get_archlinux_aur_helper</span>():
+    <span style="color: #4ae2f0;">command</span> <span style="color: #ffffff;">=</span> <span style="color: #b6a0ff;">None</span>
+    <span style="color: #79a8ff;">for</span> helper <span style="color: #79a8ff;">in</span> [<span style="color: #2fafff;">"paru"</span>, <span style="color: #2fafff;">"pacaur"</span>, <span style="color: #2fafff;">"yay"</span>, <span style="color: #2fafff;">"yaourt"</span>, <span style="color: #2fafff;">"aura"</span>]:
+        <span style="color: #79a8ff;">if</span> which(helper):
+            <span style="color: #4ae2f0;">command</span> <span style="color: #ffffff;">=</span> helper
+            <span style="color: #79a8ff;">break</span>
+    <span style="color: #79a8ff;">if</span> command:
+        <span style="color: #79a8ff;">return</span> command
+    <span style="color: #79a8ff;">else</span>:
+        <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"Please install one of AUR's helper, such as 'pacaur', 'yay', 'yaourt', 'paru', etc."</span>, file<span style="color: #ffffff;">=</span>sys.stderr)
+        sys.<span style="color: #b6a0ff;">exit</span>(1)
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">install_sys_deps</span>(distro: <span style="color: #feacd0;">str</span>, deps_list):
+    <span style="color: #4ae2f0;">deps_list</span> <span style="color: #ffffff;">=</span> prune_existing_sys_deps(deps_list)
+    <span style="color: #4ae2f0;">command</span> <span style="color: #ffffff;">=</span> []
+    <span style="color: #79a8ff;">if</span> distro <span style="color: #ffffff;">==</span> <span style="color: #2fafff;">'dnf'</span>:
+        <span style="color: #4ae2f0;">command</span> <span style="color: #ffffff;">=</span> [<span style="color: #2fafff;">'sudo'</span>, <span style="color: #2fafff;">'dnf'</span>, <span style="color: #2fafff;">'-y'</span>, <span style="color: #2fafff;">'install'</span>]
+    <span style="color: #79a8ff;">elif</span> distro <span style="color: #ffffff;">==</span> <span style="color: #2fafff;">'emerge'</span>:
+        <span style="color: #4ae2f0;">command</span> <span style="color: #ffffff;">=</span> [<span style="color: #2fafff;">'sudo'</span>, <span style="color: #2fafff;">'emerge'</span>, <span style="color: #2fafff;">"--update"</span>]
+    <span style="color: #79a8ff;">elif</span> distro <span style="color: #ffffff;">==</span> <span style="color: #2fafff;">'apt'</span>:
+        <span style="color: #4ae2f0;">command</span> <span style="color: #ffffff;">=</span> [<span style="color: #2fafff;">'sudo'</span>, <span style="color: #2fafff;">'apt'</span>, <span style="color: #2fafff;">'-y'</span>, <span style="color: #2fafff;">'install'</span>]
+    <span style="color: #79a8ff;">elif</span> distro <span style="color: #ffffff;">==</span> <span style="color: #2fafff;">'pacman'</span>:
+        <span style="color: #4ae2f0;">aur_helper</span> <span style="color: #ffffff;">=</span> get_archlinux_aur_helper()
+        <span style="color: #4ae2f0;">command</span> <span style="color: #ffffff;">=</span> [aur_helper, <span style="color: #2fafff;">'-Sy'</span>, <span style="color: #2fafff;">'--noconfirm'</span>, <span style="color: #2fafff;">'--needed'</span>]
+    <span style="color: #79a8ff;">elif</span> distro <span style="color: #ffffff;">==</span> <span style="color: #2fafff;">'xbps'</span>:
+        <span style="color: #4ae2f0;">command</span> <span style="color: #ffffff;">=</span> [<span style="color: #2fafff;">'sudo'</span>, <span style="color: #2fafff;">'xbps-install'</span>, <span style="color: #2fafff;">'-Sy'</span>]
+    <span style="color: #79a8ff;">elif</span> which(<span style="color: #2fafff;">"pkg"</span>):
+        <span style="color: #4ae2f0;">command</span> <span style="color: #ffffff;">=</span> [<span style="color: #2fafff;">'doas'</span>, <span style="color: #2fafff;">'pkg'</span>, <span style="color: #2fafff;">'-y'</span>, <span style="color: #2fafff;">'install'</span>]
+    <span style="color: #79a8ff;">elif</span> which(<span style="color: #2fafff;">"guix"</span>):
+        <span style="color: #4ae2f0;">command</span> <span style="color: #ffffff;">=</span> [<span style="color: #2fafff;">'guix'</span>, <span style="color: #2fafff;">'install'</span>]
+    <span style="color: #79a8ff;">elif</span> which(<span style="color: #2fafff;">"nix"</span>):
+        <span style="color: #4ae2f0;">command</span> <span style="color: #ffffff;">=</span> [<span style="color: #2fafff;">'nix'</span>, <span style="color: #2fafff;">'profile'</span>, <span style="color: #2fafff;">'install'</span>]
+    <span style="color: #79a8ff;">elif</span> which(<span style="color: #2fafff;">"zypper"</span>):
+        <span style="color: #4ae2f0;">command</span> <span style="color: #ffffff;">=</span> [<span style="color: #2fafff;">'sudo'</span>, <span style="color: #2fafff;">'zypper'</span>, <span style="color: #2fafff;">'install'</span>,<span style="color: #2fafff;">'-y'</span>]
+    command.extend(deps_list)
+    <span style="color: #79a8ff;">try</span>:
+        run_command(command)
+    <span style="color: #79a8ff;">except</span> <span style="color: #11c777;">Exception</span> <span style="color: #79a8ff;">as</span> e:
+        <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"Error: {}"</span>.<span style="color: #feacd0;">format</span>(e))
+        install_failed_sys.append(<span style="color: #2fafff;">' '</span>.join(command))
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">install_py_deps</span>(deps_list):
+    <span style="color: #79a8ff;">if</span> sys.prefix <span style="color: #ffffff;">==</span> sys.base_prefix:
+        <span style="color: #ef8386;"># </span><span style="color: #ef8386;">pass --break-system-packages to permit installing packages into EXTERNALLY-MANAGED Python installations. see https://github.com/pypa/pip/issues/11780
+</span>        <span style="color: #79a8ff;">if</span> get_distro() <span style="color: #ffffff;">!=</span> <span style="color: #2fafff;">"guix"</span> <span style="color: #79a8ff;">and</span> os.path.exists(os.path.join(sysconfig.get_path(<span style="color: #2fafff;">"stdlib"</span>, sysconfig.get_default_scheme() <span style="color: #79a8ff;">if</span> <span style="color: #feacd0;">hasattr</span>(sysconfig, <span style="color: #2fafff;">"get_default_scheme"</span>) <span style="color: #79a8ff;">else</span> sysconfig._get_default_scheme()),<span style="color: #2fafff;">"EXTERNALLY-MANAGED"</span>)):
+            <span style="color: #4ae2f0;">command</span> <span style="color: #ffffff;">=</span> PIP_CMD <span style="color: #ffffff;">+</span> [<span style="color: #2fafff;">'install'</span>, <span style="color: #2fafff;">'--user'</span>, <span style="color: #2fafff;">'--break-system-packages'</span>, <span style="color: #2fafff;">'-U'</span>]
+        <span style="color: #79a8ff;">else</span>:
+            <span style="color: #4ae2f0;">command</span> <span style="color: #ffffff;">=</span> PIP_CMD <span style="color: #ffffff;">+</span> [<span style="color: #2fafff;">'install'</span>, <span style="color: #2fafff;">'--user'</span>, <span style="color: #2fafff;">'-U'</span>]
+    <span style="color: #79a8ff;">else</span>:
+        <span style="color: #ef8386;"># </span><span style="color: #ef8386;">if running on a virtual env, --user option is not valid.
+</span>        <span style="color: #4ae2f0;">command</span> <span style="color: #ffffff;">=</span> PIP_CMD <span style="color: #ffffff;">+</span> [<span style="color: #2fafff;">'install'</span>, <span style="color: #2fafff;">'-U'</span>]
+    command.extend(deps_list)
+    <span style="color: #79a8ff;">try</span>:
+        run_command(command)
+    <span style="color: #79a8ff;">except</span> <span style="color: #11c777;">Exception</span> <span style="color: #79a8ff;">as</span> e:
+        <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"Error:"</span>, e)
+        install_failed_pys.append(<span style="color: #2fafff;">' '</span>.join(command))
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">install_npm_gloal_deps</span>(deps_list):
+    <span style="color: #4ae2f0;">command</span> <span style="color: #ffffff;">=</span> [<span style="color: #2fafff;">"sudo"</span>, NPM_CMD, <span style="color: #2fafff;">"install"</span>, <span style="color: #2fafff;">"-g"</span>]
+    command.extend(deps_list)
+
+    <span style="color: #79a8ff;">try</span>:
+        run_command(command)
+    <span style="color: #79a8ff;">except</span> <span style="color: #11c777;">Exception</span> <span style="color: #79a8ff;">as</span> e:
+        <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"Error:"</span>, e)
+        install_failed_npm_globals.append(<span style="color: #2fafff;">' '</span>.join(command))
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">remove_node_modules_path</span>(app_path_list):
+    <span style="color: #79a8ff;">for</span> app_path <span style="color: #79a8ff;">in</span> app_path_list:
+        <span style="color: #4ae2f0;">node_modules_path</span> <span style="color: #ffffff;">=</span> os.path.join(app_path, <span style="color: #2fafff;">"node_modules"</span>)
+        <span style="color: #79a8ff;">if</span> os.path.isdir(node_modules_path):
+            rmtree(node_modules_path)
+            <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"[EAF] WARN: removing {}"</span>.<span style="color: #feacd0;">format</span>(node_modules_path))
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">install_npm_install</span>(app_path_list):
+    <span style="color: #79a8ff;">for</span> app_path <span style="color: #79a8ff;">in</span> app_path_list:
+        <span style="color: #4ae2f0;">command</span> <span style="color: #ffffff;">=</span> [NPM_CMD, <span style="color: #2fafff;">"install"</span>, <span style="color: #2fafff;">"--force"</span>]
+        <span style="color: #79a8ff;">try</span>:
+            run_command(command, path<span style="color: #ffffff;">=</span>app_path)
+        <span style="color: #79a8ff;">except</span> <span style="color: #11c777;">Exception</span> <span style="color: #79a8ff;">as</span> e:
+            <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"Error:"</span>, e)
+            install_failed_apps.append(app_path)
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">install_npm_rebuild</span>(app_path_list):
+    <span style="color: #79a8ff;">for</span> app_path <span style="color: #79a8ff;">in</span> app_path_list:
+        <span style="color: #4ae2f0;">command</span> <span style="color: #ffffff;">=</span> [NPM_CMD, <span style="color: #2fafff;">"rebuild"</span>]
+        <span style="color: #79a8ff;">try</span>:
+            run_command(command, path<span style="color: #ffffff;">=</span>app_path)
+        <span style="color: #79a8ff;">except</span> <span style="color: #11c777;">Exception</span> <span style="color: #79a8ff;">as</span> e:
+            <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"Error:"</span>, e)
+            install_failed_apps.append(app_path)
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">install_vue_install</span>(app_path_list):
+    <span style="color: #79a8ff;">for</span> app_path <span style="color: #79a8ff;">in</span> app_path_list:
+        <span style="color: #4ae2f0;">command</span> <span style="color: #ffffff;">=</span> [NPM_CMD, <span style="color: #2fafff;">"install"</span>, <span style="color: #2fafff;">"--force"</span>]
+        <span style="color: #79a8ff;">try</span>:
+            run_command(command, path<span style="color: #ffffff;">=</span>app_path)
+        <span style="color: #79a8ff;">except</span> <span style="color: #11c777;">Exception</span> <span style="color: #79a8ff;">as</span> e:
+            <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"Error:"</span>, e)
+            install_failed_apps.append(app_path)
+        <span style="color: #4ae2f0;">command</span> <span style="color: #ffffff;">=</span> [NPM_CMD, <span style="color: #2fafff;">"run"</span>, <span style="color: #2fafff;">"build"</span>]
+        <span style="color: #79a8ff;">try</span>:
+            run_command(command, path<span style="color: #ffffff;">=</span>app_path)
+        <span style="color: #79a8ff;">except</span> <span style="color: #11c777;">Exception</span> <span style="color: #79a8ff;">as</span> e:
+            <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"Error:"</span>, e)
+            install_failed_apps.append(app_path)
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">add_or_update_app</span>(app: <span style="color: #feacd0;">str</span>, app_spec_dict):
+    <span style="color: #4ae2f0;">url</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">""</span>
+    <span style="color: #4ae2f0;">path</span> <span style="color: #ffffff;">=</span> os.path.join(<span style="color: #2fafff;">"app"</span>, app)
+
+    <span style="color: #79a8ff;">if</span> os.path.exists(path):
+        <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"</span><span style="color: #b6a0ff;">\n</span><span style="color: #2fafff;">[EAF] Updating"</span>, app, <span style="color: #2fafff;">"to newest version..."</span>)
+    <span style="color: #79a8ff;">else</span>:
+        <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"</span><span style="color: #b6a0ff;">\n</span><span style="color: #2fafff;">[EAF] Adding"</span>, app, <span style="color: #2fafff;">"application to EAF..."</span>)
+
+    <span style="color: #4ae2f0;">url</span> <span style="color: #ffffff;">=</span> app_spec_dict[<span style="color: #2fafff;">'url'</span>]
+
+    <span style="color: #4ae2f0;">branch</span> <span style="color: #ffffff;">=</span> app_spec_dict[<span style="color: #2fafff;">'branch'</span>]
+    <span style="color: #4ae2f0;">time</span> <span style="color: #ffffff;">=</span> datetime.datetime.now().strftime(<span style="color: #2fafff;">'%Y-%m-%d %H:%M'</span>)
+
+
+    <span style="color: #4ae2f0;">updated</span> <span style="color: #ffffff;">=</span> <span style="color: #b6a0ff;">True</span>
+    <span style="color: #79a8ff;">if</span> os.path.exists(path):
+        <span style="color: #79a8ff;">if</span> args.app_drop_local_edit:
+            <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"[EAF] Clean {}'s local changed for pull code automatically."</span>.<span style="color: #feacd0;">format</span>(app))
+            run_command([<span style="color: #2fafff;">"git"</span>, <span style="color: #2fafff;">"clean"</span>, <span style="color: #2fafff;">"-df"</span>], path<span style="color: #ffffff;">=</span>path, ensure_pass<span style="color: #ffffff;">=</span><span style="color: #b6a0ff;">False</span>)
+            run_command([<span style="color: #2fafff;">"git"</span>, <span style="color: #2fafff;">"reset"</span>, <span style="color: #2fafff;">"--hard"</span>, <span style="color: #2fafff;">"origin"</span>], path<span style="color: #ffffff;">=</span>path, ensure_pass<span style="color: #ffffff;">=</span><span style="color: #b6a0ff;">False</span>)
+        <span style="color: #79a8ff;">elif</span> args.app_save_local_edit:
+            <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"[EAF] Clean {}'s local changed for pull code automatically."</span>.<span style="color: #feacd0;">format</span>(app))
+            run_command([<span style="color: #2fafff;">"git"</span>, <span style="color: #2fafff;">"clean"</span>, <span style="color: #2fafff;">"-df"</span>], path<span style="color: #ffffff;">=</span>path, ensure_pass<span style="color: #ffffff;">=</span><span style="color: #b6a0ff;">False</span>)
+            run_command([<span style="color: #2fafff;">"git"</span>, <span style="color: #2fafff;">"stash"</span>, <span style="color: #2fafff;">"save"</span>, <span style="color: #2fafff;">"[{}] Auto stashed by install-eaf.py"</span>.<span style="color: #feacd0;">format</span>(time)], path<span style="color: #ffffff;">=</span>path, ensure_pass<span style="color: #ffffff;">=</span><span style="color: #b6a0ff;">False</span>)
+            run_command([<span style="color: #2fafff;">"git"</span>, <span style="color: #2fafff;">"reset"</span>, <span style="color: #2fafff;">"--hard"</span>], path<span style="color: #ffffff;">=</span>path, ensure_pass<span style="color: #ffffff;">=</span><span style="color: #b6a0ff;">False</span>)
+            run_command([<span style="color: #2fafff;">"git"</span>, <span style="color: #2fafff;">"checkout"</span>, branch], path<span style="color: #ffffff;">=</span>path, ensure_pass<span style="color: #ffffff;">=</span><span style="color: #b6a0ff;">False</span>)
+            run_command([<span style="color: #2fafff;">"git"</span>, <span style="color: #2fafff;">"reset"</span>, <span style="color: #2fafff;">"--hard"</span>, <span style="color: #2fafff;">"origin"</span>], path<span style="color: #ffffff;">=</span>path, ensure_pass<span style="color: #ffffff;">=</span><span style="color: #b6a0ff;">False</span>)
+
+        <span style="color: #4ae2f0;">branch_outputs</span> <span style="color: #ffffff;">=</span> run_command([<span style="color: #2fafff;">"git"</span>, <span style="color: #2fafff;">"branch"</span>], path<span style="color: #ffffff;">=</span>path, get_result<span style="color: #ffffff;">=</span><span style="color: #b6a0ff;">True</span>)
+        <span style="color: #79a8ff;">if</span> branch_outputs <span style="color: #79a8ff;">is</span> <span style="color: #b6a0ff;">None</span>:
+            <span style="color: #79a8ff;">raise</span> <span style="color: #11c777;">Exception</span>(<span style="color: #2fafff;">"Not in git app!"</span>)
+        <span style="color: #4ae2f0;">exist_branch</span> <span style="color: #ffffff;">=</span> <span style="color: #b6a0ff;">False</span>
+        <span style="color: #79a8ff;">for</span> b <span style="color: #79a8ff;">in</span> branch_outputs:
+            <span style="color: #79a8ff;">if</span> branch <span style="color: #79a8ff;">in</span> b:
+                <span style="color: #4ae2f0;">exist_branch</span> <span style="color: #ffffff;">=</span> <span style="color: #b6a0ff;">True</span>
+                <span style="color: #79a8ff;">break</span>
+        <span style="color: #79a8ff;">if</span> <span style="color: #79a8ff;">not</span> exist_branch:
+            run_command([<span style="color: #2fafff;">"git"</span>, <span style="color: #2fafff;">"config"</span>, <span style="color: #2fafff;">"remote.origin.fetch"</span>, <span style="color: #2fafff;">"+refs/heads/"</span><span style="color: #ffffff;">+</span>branch<span style="color: #ffffff;">+</span><span style="color: #2fafff;">":refs/remotes/origin/"</span><span style="color: #ffffff;">+</span>branch], path<span style="color: #ffffff;">=</span>path)
+            <span style="color: #79a8ff;">if</span> args.git_full_clone:
+                run_command([<span style="color: #2fafff;">"git"</span>, <span style="color: #2fafff;">"fetch"</span>, <span style="color: #2fafff;">"origin"</span>, branch], path<span style="color: #ffffff;">=</span>path)
+            <span style="color: #79a8ff;">else</span>:
+                run_command([<span style="color: #2fafff;">"git"</span>, <span style="color: #2fafff;">"fetch"</span>, <span style="color: #2fafff;">"origin"</span>, branch, <span style="color: #2fafff;">"--depth"</span>, <span style="color: #2fafff;">"1"</span>], path<span style="color: #ffffff;">=</span>path)
+
+        <span style="color: #4ae2f0;">current_branch_outputs</span> <span style="color: #ffffff;">=</span> run_command([<span style="color: #2fafff;">"git"</span>, <span style="color: #2fafff;">"symbolic-ref"</span>, <span style="color: #2fafff;">"HEAD"</span>], path<span style="color: #ffffff;">=</span>path, get_result<span style="color: #ffffff;">=</span><span style="color: #b6a0ff;">True</span>)
+        <span style="color: #79a8ff;">if</span> current_branch_outputs <span style="color: #79a8ff;">is</span> <span style="color: #b6a0ff;">None</span>:
+            <span style="color: #79a8ff;">raise</span> <span style="color: #11c777;">Exception</span>(<span style="color: #2fafff;">"git symbolic-ref failed!"</span>)
+        <span style="color: #4ae2f0;">current_branch</span> <span style="color: #ffffff;">=</span> current_branch_outputs[0]
+        <span style="color: #79a8ff;">if</span> branch <span style="color: #79a8ff;">not</span> <span style="color: #79a8ff;">in</span> current_branch:
+            run_command([<span style="color: #2fafff;">"git"</span>, <span style="color: #2fafff;">"checkout"</span>, branch], path<span style="color: #ffffff;">=</span>path)
+
+        <span style="color: #4ae2f0;">output_lines</span> <span style="color: #ffffff;">=</span> run_command([<span style="color: #2fafff;">"git"</span>, <span style="color: #2fafff;">"pull"</span>, <span style="color: #2fafff;">"origin"</span>, branch], path<span style="color: #ffffff;">=</span>path, get_result<span style="color: #ffffff;">=</span><span style="color: #b6a0ff;">True</span>)
+        <span style="color: #79a8ff;">if</span> output_lines <span style="color: #79a8ff;">is</span> <span style="color: #b6a0ff;">None</span>:
+            <span style="color: #79a8ff;">raise</span> <span style="color: #11c777;">Exception</span>(<span style="color: #2fafff;">"git pull failed!"</span>)
+        <span style="color: #79a8ff;">for</span> output <span style="color: #79a8ff;">in</span> output_lines:
+            <span style="color: #feacd0;">print</span>(output.rstrip())
+            <span style="color: #79a8ff;">if</span> <span style="color: #2fafff;">"Already up to date."</span> <span style="color: #79a8ff;">in</span> output:
+                <span style="color: #4ae2f0;">updated</span> <span style="color: #ffffff;">=</span> <span style="color: #b6a0ff;">False</span> <span style="color: #79a8ff;">if</span> branch <span style="color: #79a8ff;">in</span> current_branch <span style="color: #79a8ff;">else</span> <span style="color: #b6a0ff;">True</span>
+
+    <span style="color: #79a8ff;">elif</span> args.git_full_clone:
+        run_command([<span style="color: #2fafff;">"git"</span>, <span style="color: #2fafff;">"clone"</span>, <span style="color: #2fafff;">"-b"</span>, branch, url, path])
+    <span style="color: #79a8ff;">else</span>:
+        run_command([<span style="color: #2fafff;">"git"</span>, <span style="color: #2fafff;">"clone"</span>, <span style="color: #2fafff;">"-b"</span>, branch, <span style="color: #2fafff;">"--depth"</span>, <span style="color: #2fafff;">"1"</span>, url, path])
+    <span style="color: #79a8ff;">return</span> updated
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">get_distro</span>():
+    <span style="color: #4ae2f0;">distro</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">""</span>
+    <span style="color: #79a8ff;">if</span> sys.platform <span style="color: #ffffff;">!=</span> <span style="color: #2fafff;">"linux"</span>:
+        <span style="color: #79a8ff;">pass</span>
+    <span style="color: #79a8ff;">elif</span> which(<span style="color: #2fafff;">"dnf"</span>):
+        <span style="color: #4ae2f0;">distro</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">"dnf"</span>
+    <span style="color: #79a8ff;">elif</span> which(<span style="color: #2fafff;">"emerge"</span>):
+        <span style="color: #4ae2f0;">distro</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">"emerge"</span>
+    <span style="color: #79a8ff;">elif</span> which(<span style="color: #2fafff;">"apt"</span>):
+        <span style="color: #4ae2f0;">distro</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">"apt"</span>
+    <span style="color: #79a8ff;">elif</span> which(<span style="color: #2fafff;">"pacman"</span>):
+        <span style="color: #4ae2f0;">distro</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">"pacman"</span>
+        <span style="color: #4ae2f0;">aur_helper</span> <span style="color: #ffffff;">=</span> get_archlinux_aur_helper()
+        <span style="color: #79a8ff;">if</span> (<span style="color: #79a8ff;">not</span> args.ignore_core_deps <span style="color: #79a8ff;">and</span> <span style="color: #79a8ff;">not</span> args.ignore_sys_deps <span style="color: #79a8ff;">and</span> <span style="color: #feacd0;">len</span>(args.install) <span style="color: #ffffff;">==</span> 0) <span style="color: #79a8ff;">or</span> args.install_core_deps:
+            <span style="color: #79a8ff;">try</span>:
+                run_command([aur_helper, <span style="color: #2fafff;">'-Sy'</span>, <span style="color: #2fafff;">'--noconfirm'</span>, <span style="color: #2fafff;">'--needed'</span>])
+            <span style="color: #79a8ff;">except</span>:
+                <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"Run command `{} -Sy --noconfirm --needed' failed."</span>.<span style="color: #feacd0;">format</span>(aur_helper))
+
+    <span style="color: #79a8ff;">elif</span> which(<span style="color: #2fafff;">"pkg"</span>):
+        <span style="color: #4ae2f0;">distro</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">"pkg"</span>
+    <span style="color: #79a8ff;">elif</span> which(<span style="color: #2fafff;">"guix"</span>):
+        <span style="color: #4ae2f0;">distro</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">"guix"</span>
+    <span style="color: #79a8ff;">elif</span> which(<span style="color: #2fafff;">"zypper"</span>):
+        <span style="color: #4ae2f0;">distro</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">"zypper"</span>
+    <span style="color: #79a8ff;">elif</span> which(<span style="color: #2fafff;">"brew"</span>):
+        <span style="color: #4ae2f0;">distro</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">"brew"</span>
+    <span style="color: #79a8ff;">elif</span> which(<span style="color: #2fafff;">"nix"</span>):
+        <span style="color: #4ae2f0;">distro</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">"nix"</span>
+    <span style="color: #79a8ff;">elif</span> which(<span style="color: #2fafff;">"xbps-install"</span>):
+        <span style="color: #4ae2f0;">distro</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">"xbps"</span>
+    <span style="color: #79a8ff;">elif</span> sys.platform <span style="color: #ffffff;">==</span> <span style="color: #2fafff;">"linux"</span>:
+        <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"[EAF] Unsupported Linux distribution/package manager."</span>)
+        <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">" Please see dependencies.json for list of dependencies."</span>)
+        <span style="color: #79a8ff;">if</span> <span style="color: #79a8ff;">not</span> (args.ignore_core_deps <span style="color: #79a8ff;">or</span> args.ignore_sys_deps):
+            sys.<span style="color: #b6a0ff;">exit</span>(1)
+
+    <span style="color: #79a8ff;">return</span> distro
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">install_core_deps</span>(distro, deps_dict):
+    <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"[EAF] Installing core dependencies"</span>)
+    <span style="color: #4ae2f0;">core_deps</span> <span style="color: #ffffff;">=</span> []
+    <span style="color: #79a8ff;">if</span> <span style="color: #79a8ff;">not</span> args.ignore_sys_deps <span style="color: #79a8ff;">and</span> sys.platform <span style="color: #ffffff;">==</span> <span style="color: #2fafff;">"linux"</span>:
+        core_deps.extend(deps_dict[distro])
+        <span style="color: #79a8ff;">if</span> <span style="color: #feacd0;">len</span>(core_deps) <span style="color: #ffffff;">&gt;</span> 0:
+            install_sys_deps(distro, core_deps)
+    <span style="color: #79a8ff;">if</span> (<span style="color: #79a8ff;">not</span> args.ignore_py_deps <span style="color: #79a8ff;">or</span> sys.platform <span style="color: #ffffff;">!=</span> <span style="color: #2fafff;">"linux"</span>) <span style="color: #79a8ff;">and</span> sys.platform <span style="color: #79a8ff;">in</span> deps_dict[<span style="color: #2fafff;">"pip"</span>]:
+        <span style="color: #ef8386;"># </span><span style="color: #ef8386;">For pip dependencies, the distribution name takes precedence over the os name.
+</span>        <span style="color: #ef8386;">#</span><span style="color: #ef8386;">
+</span>        <span style="color: #ef8386;"># </span><span style="color: #ef8386;">For example, in Arch Linux, we need install PyQt from Arch repository to instead install from PIP repository
+</span>        <span style="color: #ef8386;"># </span><span style="color: #ef8386;">to make EAF browser support HTML5 video:
+</span>        <span style="color: #ef8386;">#</span><span style="color: #ef8386;">
+</span>        <span style="color: #ef8386;">#     </span><span style="color: #ef8386;">rm -rf ~/.local/lib/python3.10/site-packages/PyQt6*
+</span>        <span style="color: #ef8386;">#     </span><span style="color: #ef8386;">sudo rm -rf /usr/lib/python3.10/site-packages/PyQt6*
+</span>        <span style="color: #ef8386;">#     </span><span style="color: #ef8386;">sudo pacman -S python-pyqt6-webengine python-pyqt6 python-pyqt6-sip
+</span>        <span style="color: #4ae2f0;">distro</span> <span style="color: #ffffff;">=</span> get_distro()
+        <span style="color: #79a8ff;">if</span> distro <span style="color: #79a8ff;">in</span> deps_dict[<span style="color: #2fafff;">"pip"</span>]:
+            install_py_deps(deps_dict[<span style="color: #2fafff;">"pip"</span>][distro])
+        <span style="color: #79a8ff;">else</span>:
+            install_py_deps(deps_dict[<span style="color: #2fafff;">"pip"</span>][sys.platform])
+
+    <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"[EAF] Finished installing core dependencies"</span>)
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">yes_no</span>(question, default_yes<span style="color: #ffffff;">=</span><span style="color: #b6a0ff;">False</span>, default_no<span style="color: #ffffff;">=</span><span style="color: #b6a0ff;">False</span>):
+    <span style="color: #4ae2f0;">key</span> <span style="color: #ffffff;">=</span> <span style="color: #feacd0;">input</span>(question)
+    <span style="color: #79a8ff;">if</span> default_yes:
+        <span style="color: #79a8ff;">return</span> key.lower() <span style="color: #ffffff;">==</span> <span style="color: #2fafff;">'y'</span> <span style="color: #79a8ff;">or</span> key <span style="color: #ffffff;">==</span> <span style="color: #2fafff;">""</span>
+    <span style="color: #79a8ff;">elif</span> default_no:
+        <span style="color: #79a8ff;">return</span> key.lower() <span style="color: #ffffff;">==</span> <span style="color: #2fafff;">'y'</span> <span style="color: #79a8ff;">or</span> <span style="color: #79a8ff;">not</span> (key <span style="color: #ffffff;">==</span> <span style="color: #2fafff;">""</span> <span style="color: #79a8ff;">or</span> key.lower() <span style="color: #ffffff;">==</span> <span style="color: #2fafff;">'n'</span>)
+    <span style="color: #79a8ff;">else</span>:
+        <span style="color: #79a8ff;">return</span> key.lower() <span style="color: #ffffff;">==</span> <span style="color: #2fafff;">'y'</span>
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">get_installed_apps</span>(app_dir):
+    <span style="color: #4ae2f0;">apps_installed</span> <span style="color: #ffffff;">=</span> [
+        f
+        <span style="color: #79a8ff;">for</span> f <span style="color: #79a8ff;">in</span> os.listdir(app_dir)
+        <span style="color: #79a8ff;">if</span> os.path.isdir(os.path.join(app_dir, f))
+        <span style="color: #ef8386;"># </span><span style="color: #ef8386;">directories not managed, or not part of, EAF
+</span>        <span style="color: #79a8ff;">if</span> f <span style="color: #79a8ff;">not</span> <span style="color: #79a8ff;">in</span> (<span style="color: #2fafff;">"__pycache__"</span>,)
+    ]
+    <span style="color: #79a8ff;">for</span> app <span style="color: #79a8ff;">in</span> apps_installed:
+        <span style="color: #4ae2f0;">git_dir</span> <span style="color: #ffffff;">=</span> os.path.join(app_dir, app, <span style="color: #2fafff;">".git"</span>)
+        <span style="color: #79a8ff;">if</span> app <span style="color: #79a8ff;">not</span> <span style="color: #79a8ff;">in</span> get_available_apps_dict().keys():
+            apps_installed.remove(app)
+        <span style="color: #79a8ff;">if</span> <span style="color: #79a8ff;">not</span> os.path.isdir(git_dir):
+            important_messages.append(<span style="color: #2fafff;">"[EAF] *WARN* 'app/{}' is not a git repo installed by install-eaf.py!"</span>.<span style="color: #feacd0;">format</span>(app))
+            apps_installed.remove(app)
+
+    <span style="color: #79a8ff;">return</span> apps_installed
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">get_installed_apps_dict</span>(apps_installed):
+    <span style="color: #79a8ff;">return</span> {app_name: available_apps_dict[app_name] <span style="color: #79a8ff;">for</span> app_name <span style="color: #79a8ff;">in</span> apps_installed}
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">get_new_apps_dict</span>(apps_installed):
+    <span style="color: #4ae2f0;">not_installed_apps_dict</span> <span style="color: #ffffff;">=</span> {}
+    <span style="color: #4ae2f0;">new_apps_dict</span> <span style="color: #ffffff;">=</span> {}
+    <span style="color: #4ae2f0;">num</span> <span style="color: #ffffff;">=</span> 1
+    <span style="color: #79a8ff;">for</span> app_name, app_spec_dict <span style="color: #79a8ff;">in</span> available_apps_dict.items():
+        <span style="color: #79a8ff;">if</span> app_name <span style="color: #79a8ff;">not</span> <span style="color: #79a8ff;">in</span> apps_installed:
+            <span style="color: #4ae2f0;">not_installed_apps_dict</span>[app_name] <span style="color: #ffffff;">=</span> app_spec_dict
+    <span style="color: #79a8ff;">for</span> app_name, app_spec_dict <span style="color: #79a8ff;">in</span> not_installed_apps_dict.items():
+        <span style="color: #4ae2f0;">indicator</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">"({}/{})"</span>.<span style="color: #feacd0;">format</span>(num, <span style="color: #feacd0;">len</span>(not_installed_apps_dict))
+        <span style="color: #4ae2f0;">prompt</span> <span style="color: #ffffff;">=</span> <span style="color: #2fafff;">"[EAF] "</span> <span style="color: #ffffff;">+</span> indicator <span style="color: #ffffff;">+</span> <span style="color: #2fafff;">" "</span> <span style="color: #ffffff;">+</span> app_spec_dict[<span style="color: #2fafff;">'name'</span>] <span style="color: #ffffff;">+</span> <span style="color: #2fafff;">". "</span> <span style="color: #ffffff;">+</span> app_spec_dict[<span style="color: #2fafff;">'desc'</span>] <span style="color: #ffffff;">+</span> <span style="color: #2fafff;">" - Install?"</span>
+        <span style="color: #4ae2f0;">install_p</span> <span style="color: #ffffff;">=</span> yes_no(prompt <span style="color: #ffffff;">+</span> <span style="color: #2fafff;">" (Y/n): "</span>, default_yes<span style="color: #ffffff;">=</span><span style="color: #b6a0ff;">True</span>) <span style="color: #79a8ff;">if</span> app_spec_dict[<span style="color: #2fafff;">'default_install'</span>] <span style="color: #ffffff;">==</span> <span style="color: #2fafff;">'true'</span> <span style="color: #79a8ff;">else</span> yes_no(prompt <span style="color: #ffffff;">+</span> <span style="color: #2fafff;">" (y/N): "</span>, default_no<span style="color: #ffffff;">=</span><span style="color: #b6a0ff;">True</span>)
+        <span style="color: #79a8ff;">if</span> install_p:
+            <span style="color: #4ae2f0;">new_apps_dict</span>[app_name] <span style="color: #ffffff;">=</span> app_spec_dict
+        <span style="color: #4ae2f0;">num</span> <span style="color: #ffffff;">=</span> num <span style="color: #ffffff;">+</span> 1
+    <span style="color: #79a8ff;">return</span> new_apps_dict
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">get_specific_install_apps_dict</span>(apps_need_install):
+    <span style="color: #4ae2f0;">need_install_apps_dict</span> <span style="color: #ffffff;">=</span> {}
+    <span style="color: #79a8ff;">for</span> app_name, app_spec_dict <span style="color: #79a8ff;">in</span> available_apps_dict.items():
+        <span style="color: #79a8ff;">if</span> app_name <span style="color: #79a8ff;">in</span> apps_need_install:
+            <span style="color: #4ae2f0;">need_install_apps_dict</span>[app_name] <span style="color: #ffffff;">=</span> app_spec_dict
+    <span style="color: #79a8ff;">return</span> need_install_apps_dict
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">print_sample_config</span>(app_dir):
+    <span style="color: #79a8ff;">for</span> app <span style="color: #79a8ff;">in</span> get_installed_apps(app_dir):
+        <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"(require 'eaf-{})"</span>.<span style="color: #feacd0;">format</span>(app))
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">get_install_apps</span>(apps_installed):
+    <span style="color: #79a8ff;">if</span> args.install_all_apps:
+        <span style="color: #79a8ff;">return</span> [get_available_apps_dict()]
+    <span style="color: #79a8ff;">if</span> <span style="color: #feacd0;">len</span>(args.install) <span style="color: #ffffff;">&gt;</span> 0:
+        <span style="color: #79a8ff;">return</span> [get_specific_install_apps_dict(args.install)]
+
+    <span style="color: #4ae2f0;">pending_apps_dict_list</span> <span style="color: #ffffff;">=</span> [get_installed_apps_dict(apps_installed)]
+    <span style="color: #79a8ff;">if</span> args.install_new_apps <span style="color: #79a8ff;">or</span> <span style="color: #feacd0;">len</span>(apps_installed) <span style="color: #ffffff;">==</span> 0:
+        pending_apps_dict_list.append(get_new_apps_dict(apps_installed))
+    <span style="color: #79a8ff;">elif</span> <span style="color: #79a8ff;">not</span> args.install_new_apps:
+        important_messages.append(<span style="color: #2fafff;">"[EAF] Use the flag '--install-new-apps' to install new applications."</span>)
+
+    <span style="color: #79a8ff;">return</span> pending_apps_dict_list
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">install_app_deps</span>(distro, deps_dict):
+    <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"[EAF] Installing application dependencies"</span>)
+
+    <span style="color: #4ae2f0;">app_dir</span> <span style="color: #ffffff;">=</span> os.path.join(script_path, <span style="color: #2fafff;">"app"</span>)
+    <span style="color: #79a8ff;">if</span> <span style="color: #79a8ff;">not</span> os.path.exists(app_dir):
+        os.makedirs(app_dir)
+
+    <span style="color: #4ae2f0;">apps_installed</span> <span style="color: #ffffff;">=</span> get_installed_apps(app_dir)
+    <span style="color: #4ae2f0;">pending_apps_dict_list</span> <span style="color: #ffffff;">=</span> get_install_apps(apps_installed)
+
+    <span style="color: #4ae2f0;">sys_deps</span> <span style="color: #ffffff;">=</span> []
+    <span style="color: #4ae2f0;">py_deps</span> <span style="color: #ffffff;">=</span> []
+    <span style="color: #4ae2f0;">npm_global_deps</span> <span style="color: #ffffff;">=</span> []
+    <span style="color: #4ae2f0;">npm_install_apps</span> <span style="color: #ffffff;">=</span> []
+    <span style="color: #4ae2f0;">vue_install_apps</span> <span style="color: #ffffff;">=</span> []
+    <span style="color: #4ae2f0;">npm_rebuild_apps</span> <span style="color: #ffffff;">=</span> []
+    <span style="color: #79a8ff;">for</span> pending_apps_dict <span style="color: #79a8ff;">in</span> pending_apps_dict_list:
+        <span style="color: #79a8ff;">for</span> app_name, app_spec_dict <span style="color: #79a8ff;">in</span> pending_apps_dict.items():
+            <span style="color: #4ae2f0;">updated</span> <span style="color: #ffffff;">=</span> <span style="color: #b6a0ff;">True</span>
+            <span style="color: #79a8ff;">try</span>:
+                <span style="color: #4ae2f0;">updated</span> <span style="color: #ffffff;">=</span> add_or_update_app(app_name, app_spec_dict)
+            <span style="color: #79a8ff;">except</span> <span style="color: #11c777;">Exception</span>:
+                <span style="color: #79a8ff;">raise</span> <span style="color: #11c777;">Exception</span>(<span style="color: #2fafff;">"[EAF] There are unsaved changes in EAF "</span> <span style="color: #ffffff;">+</span> app_name <span style="color: #ffffff;">+</span> <span style="color: #2fafff;">" application. Please re-run command with --app-drop-local-edit or --app-save-local-edit"</span>)
+            <span style="color: #4ae2f0;">app_path</span> <span style="color: #ffffff;">=</span> os.path.join(app_dir, app_name)
+            <span style="color: #4ae2f0;">app_dep_path</span> <span style="color: #ffffff;">=</span> os.path.join(app_path, <span style="color: #2fafff;">'dependencies.json'</span>)
+            <span style="color: #79a8ff;">if</span> (updated <span style="color: #79a8ff;">or</span> args.force) <span style="color: #79a8ff;">and</span> os.path.exists(app_dep_path):
+                <span style="color: #79a8ff;">with</span> <span style="color: #feacd0;">open</span>(app_dep_path) <span style="color: #79a8ff;">as</span> f:
+                    <span style="color: #4ae2f0;">deps_dict</span> <span style="color: #ffffff;">=</span> json.load(f)
+                <span style="color: #79a8ff;">if</span> <span style="color: #79a8ff;">not</span> args.ignore_sys_deps <span style="color: #79a8ff;">and</span> sys.platform <span style="color: #ffffff;">==</span> <span style="color: #2fafff;">"linux"</span> <span style="color: #79a8ff;">and</span> distro <span style="color: #79a8ff;">in</span> deps_dict:
+                    sys_deps.extend(deps_dict[distro])
+                <span style="color: #79a8ff;">if</span> <span style="color: #79a8ff;">not</span> args.ignore_py_deps <span style="color: #79a8ff;">and</span> <span style="color: #2fafff;">'pip'</span> <span style="color: #79a8ff;">in</span> deps_dict <span style="color: #79a8ff;">and</span> sys.platform <span style="color: #79a8ff;">in</span> deps_dict[<span style="color: #2fafff;">'pip'</span>]:
+                    py_deps.extend(deps_dict[<span style="color: #2fafff;">'pip'</span>][sys.platform])
+                <span style="color: #79a8ff;">if</span> <span style="color: #2fafff;">"npm_global"</span> <span style="color: #79a8ff;">in</span> deps_dict:
+                    npm_global_deps.extend(deps_dict[<span style="color: #2fafff;">"npm_global"</span>])
+                <span style="color: #79a8ff;">if</span> <span style="color: #79a8ff;">not</span> args.ignore_node_deps:
+                    <span style="color: #79a8ff;">if</span> <span style="color: #2fafff;">'npm_install'</span> <span style="color: #79a8ff;">in</span> deps_dict <span style="color: #79a8ff;">and</span> deps_dict[<span style="color: #2fafff;">'npm_install'</span>]:
+                        npm_install_apps.append(app_path)
+                    <span style="color: #79a8ff;">if</span> <span style="color: #2fafff;">'vue_install'</span> <span style="color: #79a8ff;">in</span> deps_dict <span style="color: #79a8ff;">and</span> deps_dict[<span style="color: #2fafff;">'vue_install'</span>]:
+                        vue_install_apps.append(app_path)
+                    <span style="color: #79a8ff;">if</span> <span style="color: #2fafff;">'npm_rebuild'</span> <span style="color: #79a8ff;">in</span> deps_dict <span style="color: #79a8ff;">and</span> deps_dict[<span style="color: #2fafff;">'npm_rebuild'</span>]:
+                        npm_rebuild_apps.append(app_path)
+
+    <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"</span><span style="color: #b6a0ff;">\n</span><span style="color: #2fafff;">[EAF] Installing dependencies for the selected applications"</span>)
+    <span style="color: #79a8ff;">if</span> <span style="color: #79a8ff;">not</span> args.ignore_sys_deps <span style="color: #79a8ff;">and</span> sys.platform <span style="color: #ffffff;">==</span> <span style="color: #2fafff;">"linux"</span> <span style="color: #79a8ff;">and</span> <span style="color: #feacd0;">len</span>(sys_deps) <span style="color: #ffffff;">&gt;</span> 0:
+        <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"[EAF] Installing system dependencies"</span>)
+        install_sys_deps(distro, sys_deps)
+    <span style="color: #79a8ff;">if</span> <span style="color: #79a8ff;">not</span> args.ignore_py_deps <span style="color: #79a8ff;">and</span> <span style="color: #feacd0;">len</span>(py_deps) <span style="color: #ffffff;">&gt;</span> 0:
+        <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"[EAF] Installing python dependencies"</span>)
+        install_py_deps(py_deps)
+    <span style="color: #79a8ff;">if</span> <span style="color: #feacd0;">len</span>(npm_global_deps) <span style="color: #ffffff;">&gt;</span> 0:
+        install_npm_gloal_deps(npm_global_deps)
+    <span style="color: #79a8ff;">if</span> <span style="color: #79a8ff;">not</span> args.ignore_node_deps:
+        <span style="color: #79a8ff;">if</span> args.force:
+            <span style="color: #79a8ff;">if</span> <span style="color: #feacd0;">len</span>(npm_install_apps) <span style="color: #ffffff;">&gt;</span> 0:
+                remove_node_modules_path(npm_install_apps)
+            <span style="color: #79a8ff;">if</span> <span style="color: #feacd0;">len</span>(vue_install_apps) <span style="color: #ffffff;">&gt;</span> 0:
+                remove_node_modules_path(vue_install_apps)
+        <span style="color: #79a8ff;">if</span> <span style="color: #feacd0;">len</span>(npm_install_apps) <span style="color: #ffffff;">&gt;</span> 0:
+            install_npm_install(npm_install_apps)
+        <span style="color: #79a8ff;">if</span> <span style="color: #feacd0;">len</span>(npm_rebuild_apps) <span style="color: #ffffff;">&gt;</span> 0:
+            install_npm_rebuild(npm_rebuild_apps)
+        <span style="color: #79a8ff;">if</span> <span style="color: #feacd0;">len</span>(vue_install_apps) <span style="color: #ffffff;">&gt;</span> 0:
+            install_vue_install(vue_install_apps)
+
+    <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"</span><span style="color: #b6a0ff;">\n</span><span style="color: #2fafff;">[EAF] Please always ensure the following config are added to your init.el:"</span>)
+    print_sample_config(app_dir)
+
+    <span style="color: #79a8ff;">global</span> install_failed_sys
+    <span style="color: #79a8ff;">global</span> install_failed_pys
+    <span style="color: #79a8ff;">global</span> install_failed_npm_globals
+    <span style="color: #79a8ff;">global</span> install_failed_apps
+    <span style="color: #79a8ff;">if</span> <span style="color: #feacd0;">len</span>(install_failed_sys) <span style="color: #ffffff;">&gt;</span> 0:
+        <span style="color: #4ae2f0;">install_failed_sys</span> <span style="color: #ffffff;">=</span> <span style="color: #feacd0;">list</span>(<span style="color: #feacd0;">set</span>(install_failed_sys))
+        print_warning_message(<span style="color: #2fafff;">"</span><span style="color: #b6a0ff;">\n</span><span style="color: #2fafff;">[EAF] Installation FAILED for the following system dependencies:"</span>)
+        <span style="color: #79a8ff;">for</span> dep <span style="color: #79a8ff;">in</span> install_failed_sys:
+            print_warning_message(dep)
+    <span style="color: #79a8ff;">if</span> <span style="color: #feacd0;">len</span>(install_failed_pys) <span style="color: #ffffff;">&gt;</span> 0:
+        <span style="color: #4ae2f0;">install_failed_pys</span> <span style="color: #ffffff;">=</span> <span style="color: #feacd0;">list</span>(<span style="color: #feacd0;">set</span>(install_failed_pys))
+        print_warning_message(<span style="color: #2fafff;">"</span><span style="color: #b6a0ff;">\n</span><span style="color: #2fafff;">[EAF] Installation FAILED for the following Python dependencies:"</span>)
+        <span style="color: #79a8ff;">for</span> dep <span style="color: #79a8ff;">in</span> install_failed_pys:
+            print_warning_message(dep)
+    <span style="color: #79a8ff;">if</span> <span style="color: #feacd0;">len</span>(install_failed_npm_globals) <span style="color: #ffffff;">&gt;</span> 0:
+        <span style="color: #4ae2f0;">install_failed_npm_globals</span> <span style="color: #ffffff;">=</span> <span style="color: #feacd0;">list</span>(<span style="color: #feacd0;">set</span>(install_failed_npm_globals))
+        print_warning_message(<span style="color: #2fafff;">"</span><span style="color: #b6a0ff;">\n</span><span style="color: #2fafff;">[EAF] Installation FAILED for the following NPM dependencies:"</span>)
+        <span style="color: #79a8ff;">for</span> dep <span style="color: #79a8ff;">in</span> install_failed_npm_globals:
+            print_warning_message(dep)
+    <span style="color: #79a8ff;">if</span> <span style="color: #feacd0;">len</span>(install_failed_apps) <span style="color: #ffffff;">&gt;</span> 0:
+        <span style="color: #4ae2f0;">install_failed_apps</span> <span style="color: #ffffff;">=</span> <span style="color: #feacd0;">list</span>(<span style="color: #feacd0;">set</span>(install_failed_apps))
+        print_warning_message(<span style="color: #2fafff;">"</span><span style="color: #b6a0ff;">\n</span><span style="color: #2fafff;">[EAF] Installation FAILED for following applications:"</span>)
+        <span style="color: #79a8ff;">for</span> app <span style="color: #79a8ff;">in</span> install_failed_apps:
+            print_warning_message(app)
+    <span style="color: #79a8ff;">if</span> <span style="color: #feacd0;">len</span>(install_failed_sys) <span style="color: #ffffff;">+</span> <span style="color: #feacd0;">len</span>(install_failed_pys) <span style="color: #ffffff;">+</span> <span style="color: #feacd0;">len</span>(install_failed_apps) <span style="color: #ffffff;">==</span> 0:
+        <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"[EAF] Installation SUCCESS!"</span>)
+    <span style="color: #79a8ff;">else</span>:
+        <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"[EAF] Please rerun ./install-eaf.py with `--force`, or install them manually!"</span>)
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">print_warning_message</span>(message):
+    <span style="color: #feacd0;">print</span>(bcolors.WARNING <span style="color: #ffffff;">+</span> message <span style="color: #ffffff;">+</span> bcolors.ENDC)
+
+<span style="color: #79a8ff;">def</span> <span style="color: #f78fe7;">main</span>():
+    <span style="color: #79a8ff;">try</span>:
+        <span style="color: #4ae2f0;">distro</span> <span style="color: #ffffff;">=</span> get_distro()
+        <span style="color: #79a8ff;">with</span> <span style="color: #feacd0;">open</span>(os.path.join(script_path, <span style="color: #2fafff;">'dependencies.json'</span>)) <span style="color: #79a8ff;">as</span> f:
+            <span style="color: #4ae2f0;">deps_dict</span> <span style="color: #ffffff;">=</span> json.load(f)
+
+        <span style="color: #79a8ff;">if</span> (<span style="color: #79a8ff;">not</span> args.ignore_core_deps <span style="color: #79a8ff;">and</span> <span style="color: #feacd0;">len</span>(args.install) <span style="color: #ffffff;">==</span> 0) <span style="color: #79a8ff;">or</span> args.install_core_deps:
+            <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"[EAF] ------------------------------------------"</span>)
+            install_core_deps(distro, deps_dict)
+            <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"[EAF] ------------------------------------------"</span>)
+
+        <span style="color: #79a8ff;">if</span> <span style="color: #79a8ff;">not</span> args.install_core_deps:
+            <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"[EAF] ------------------------------------------"</span>)
+            install_app_deps(distro, deps_dict)
+            <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"[EAF] ------------------------------------------"</span>)
+
+        <span style="color: #4ae2f0;">current_desktop</span> <span style="color: #ffffff;">=</span> os.getenv(<span style="color: #2fafff;">"XDG_CURRENT_DESKTOP"</span>) <span style="color: #79a8ff;">or</span> os.getenv(<span style="color: #2fafff;">"XDG_SESSION_DESKTOP"</span>)
+        <span style="color: #79a8ff;">if</span> current_desktop <span style="color: #79a8ff;">in</span> [<span style="color: #2fafff;">"Hyprland"</span>, <span style="color: #2fafff;">"sway"</span>]:
+            <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"[EAF] Compiling reinput"</span>)
+            subprocess.Popen(<span style="color: #2fafff;">"gcc reinput/main.c -o reinput/reinput `pkg-config --cflags --libs libinput libevdev libudev`"</span>,
+                             shell<span style="color: #ffffff;">=</span><span style="color: #b6a0ff;">True</span>)
+
+        <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"[EAF] install-eaf.py finished.</span><span style="color: #b6a0ff;">\n</span><span style="color: #2fafff;">"</span>)
+
+        <span style="color: #79a8ff;">for</span> msg <span style="color: #79a8ff;">in</span> important_messages:
+            print_warning_message(msg)
+    <span style="color: #79a8ff;">except</span> <span style="color: #11c777;">KeyboardInterrupt</span>:
+        <span style="color: #feacd0;">print</span>(<span style="color: #2fafff;">"[EAF] install-eaf.py aborted!"</span>)
+        sys.<span style="color: #b6a0ff;">exit</span>()
+
+
+<span style="color: #79a8ff;">if</span> <span style="color: #feacd0;">__name__</span> <span style="color: #ffffff;">==</span> <span style="color: #2fafff;">'__main__'</span>:
+    main()
+</code></pre>
+</div>
+<p>
+评价是npm全局安装了一些依赖,加上aur安装了一些依赖,还有一些archlinux系统包依赖,虽然这实现外部调用代码,但是这<br>
+实在是让系统的环境陷入了混乱,实在是过于重,个人倾向于尽可能零依赖和利用内置功能,所以经过今天的尝试,确认实在是不<br>
+喜欢这种形式的emacs插件,我应该会保持用内置功能和经典简约插件和社区经典理念下的插件并自行实现微型插件;<br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-org555ae74" class="outline-2">
+<h2 id="org555ae74"><span class="section-number-2">3.</span> 总结</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+过于纠结,应该优先实现cava的本来,因为自己某种逃避???又在过度折腾,这下又回来了一个圈,<br>
+应当优先保证生产力!!!!<br>
+</p>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

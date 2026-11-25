@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>自制康威生命游戏(高斯帕机枪)</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+<script>
+  window.MathJax = {
+    tex: {
+      ams: {
+        multlineWidth: '85%'
+      },
+      tags: 'ams',
+      tagSide: 'right',
+      tagIndent: '.8em'
+    },
+    chtml: {
+      scale: 1.0,
+      displayAlign: 'center',
+      displayIndent: '0em'
+    },
+    svg: {
+      scale: 1.0,
+      displayAlign: 'center',
+      displayIndent: '0em'
+    },
+    output: {
+      font: 'mathjax-modern',
+      displayOverflow: 'overflow'
+    }
+  };
+</script>
+
+<script
+  id="MathJax-script"
+  async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+</script>
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-09-13 Sun 00:10</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">自制康威生命游戏(高斯帕机枪)</h1>
+</header><div id="outline-container-org88efc79" class="outline-2">
+<h2 id="org88efc79">我的源码仓库</h2>
+<div class="outline-text-2" id="text-org88efc79">
+<ul class="org-ul">
+<li><a href="https://github.com/tinyblinker/life_game">github</a><br></li>
+<li><a href="https://gitee.com/tinyblinker/life_game">gitee</a><br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orge02366f" class="outline-2">
+<h2 id="orge02366f">简介</h2>
+<div class="outline-text-2" id="text-orge02366f">
+<p>
+康威生命游戏（英语：Conway's Game of Life），又称康威生命棋,是英国数学家约翰·何顿·康威在1970年发明的细胞自动机.<br>
+它最初于1970年10月在《科学美国人》杂志上马丁·葛登能的“数学游戏”专栏出现.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-orgbdd8b17" class="outline-2">
+<h2 id="orgbdd8b17">核心规则</h2>
+<div class="outline-text-2" id="text-orgbdd8b17">
+<p>
+每个细胞有两种状态- 存活或死亡，每个细胞与以自身为中心的周围八格细胞产生互动（如图，黑色为存活，白色为死亡）<br>
+</p>
+<ul class="org-ul">
+<li>当前细胞为存活状态时，当周围的存活细胞低于2个时（不包含2个），该细胞变成死亡状态。（模拟生命数量稀少）<br></li>
+<li>当前细胞为存活状态时，当周围有2个或3个存活细胞时，该细胞保持原样。<br></li>
+<li>当前细胞为存活状态时，当周围有超过3个存活细胞时，该细胞变成死亡状态。（模拟生命数量过多）<br></li>
+<li>当前细胞为死亡状态时，当周围有3个存活细胞时，该细胞变成存活状态。（模拟繁殖）<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org3b2ccdc" class="outline-2">
+<h2 id="org3b2ccdc">代码实现</h2>
+<div class="outline-text-2" id="text-org3b2ccdc">
+</div>
+<div id="outline-container-org3bf4f3c" class="outline-3">
+<h3 id="org3bf4f3c">(核心) fn main()</h3>
+<div class="outline-text-3" id="text-org3bf4f3c">
+<ul class="org-ul">
+<li>核心的程序循环所在处<br></li>
+</ul>
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">main</span>() {
+    <span style="color: #ef8386;">// init an 2D vector</span>
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">cols</span>: <span style="color: #11c777;">usize</span> = <span style="color: #ffffff;">40</span>;
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">rows</span>: <span style="color: #11c777;">usize</span> = <span style="color: #ffffff;">100</span>;
+    <span style="color: #79a8ff;">let</span> <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">arr</span>: <span style="color: #11c777;">Vec</span>&lt;<span style="color: #11c777;">Vec</span>&lt;<span style="color: #11c777;">MyCell</span>&gt;&gt; = (<span style="color: #ffffff;">0</span>..cols)
+        .map(|_| {
+            (<span style="color: #ffffff;">0</span>..rows)
+                .map(|_| <span style="color: #11c777;">MyCell</span> {
+                    is_alive: <span style="color: #b6a0ff;">false</span>,
+                    alive_around_cnt: <span style="color: #ffffff;">0</span>,
+                })
+                .collect()
+        })
+        .collect();
+
+    <span style="color: #ef8386;">// draw the gun(&#32472;&#21046;"&#39640;&#26031;&#24085;&#26426;&#26538;")</span>
+    draw_the_gun(&amp;<span style="color: #79a8ff;">mut</span> arr);
+
+    <span style="color: #ef8386;">// start the main loop("&#24320;&#22987;&#36827;&#34892;&#26680;&#24515;&#20027;&#24490;&#29615;")</span>
+    <span style="color: #79a8ff;">loop</span> {
+        draw(&amp;arr);
+        <span style="color: #b6a0ff;">thread</span>::sleep(<span style="color: #11c777;">Duration</span>::from_secs_f32(<span style="color: #ffffff;">0.15</span>));
+        flush_the_screen();
+        update_alive_around_count(&amp;<span style="color: #79a8ff;">mut</span> arr);
+        update_mycells(&amp;<span style="color: #79a8ff;">mut</span> arr);
+    }
+}
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org670c833" class="outline-3">
+<h3 id="org670c833">(核心) struct MyCell</h3>
+<div class="outline-text-3" id="text-org670c833">
+<ul class="org-ul">
+<li>is_alive: true-&gt;当前细胞存活,flase-&gt;当前细胞死亡;<br>
+alive_around_cnt-&gt;当前细胞周围的存活细胞数量;<br></li>
+</ul>
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">struct</span> <span style="color: #11c777;">MyCell</span> {
+    <span style="color: #4ae2f0;">is_alive</span>: <span style="color: #11c777;">bool</span>,
+    <span style="color: #4ae2f0;">alive_around_cnt</span>: <span style="color: #11c777;">usize</span>,
+}
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgdd82f3d" class="outline-3">
+<h3 id="orgdd82f3d">fn draw_the_gun(arr: &amp;mut Vec&lt;Vec&lt;MyCell&gt;&gt;) -&gt; ()</h3>
+<div class="outline-text-3" id="text-orgdd82f3d">
+<ul class="org-ul">
+<li>绘制高斯帕机枪<br></li>
+</ul>
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">draw_the_gun</span>(<span style="color: #4ae2f0;">arr</span>: &amp;<span style="color: #79a8ff;">mut</span> <span style="color: #11c777;">Vec</span>&lt;<span style="color: #11c777;">Vec</span>&lt;<span style="color: #11c777;">MyCell</span>&gt;&gt;) -&gt; () {
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">directions</span>: [(<span style="color: #11c777;">usize</span>, <span style="color: #11c777;">usize</span>); <span style="color: #ffffff;">36</span>] = [
+        (<span style="color: #ffffff;">24</span>, <span style="color: #ffffff;">0</span>),
+        (<span style="color: #ffffff;">22</span>, <span style="color: #ffffff;">1</span>),
+        (<span style="color: #ffffff;">24</span>, <span style="color: #ffffff;">1</span>),
+        (<span style="color: #ffffff;">12</span>, <span style="color: #ffffff;">2</span>),
+        (<span style="color: #ffffff;">13</span>, <span style="color: #ffffff;">2</span>),
+        (<span style="color: #ffffff;">20</span>, <span style="color: #ffffff;">2</span>),
+        (<span style="color: #ffffff;">21</span>, <span style="color: #ffffff;">2</span>),
+        (<span style="color: #ffffff;">34</span>, <span style="color: #ffffff;">2</span>),
+        (<span style="color: #ffffff;">35</span>, <span style="color: #ffffff;">2</span>),
+        (<span style="color: #ffffff;">11</span>, <span style="color: #ffffff;">3</span>),
+        (<span style="color: #ffffff;">15</span>, <span style="color: #ffffff;">3</span>),
+        (<span style="color: #ffffff;">20</span>, <span style="color: #ffffff;">3</span>),
+        (<span style="color: #ffffff;">21</span>, <span style="color: #ffffff;">3</span>),
+        (<span style="color: #ffffff;">34</span>, <span style="color: #ffffff;">3</span>),
+        (<span style="color: #ffffff;">35</span>, <span style="color: #ffffff;">3</span>),
+        (<span style="color: #ffffff;">0</span>, <span style="color: #ffffff;">4</span>),
+        (<span style="color: #ffffff;">1</span>, <span style="color: #ffffff;">4</span>),
+        (<span style="color: #ffffff;">10</span>, <span style="color: #ffffff;">4</span>),
+        (<span style="color: #ffffff;">16</span>, <span style="color: #ffffff;">4</span>),
+        (<span style="color: #ffffff;">20</span>, <span style="color: #ffffff;">4</span>),
+        (<span style="color: #ffffff;">21</span>, <span style="color: #ffffff;">4</span>),
+        (<span style="color: #ffffff;">0</span>, <span style="color: #ffffff;">5</span>),
+        (<span style="color: #ffffff;">1</span>, <span style="color: #ffffff;">5</span>),
+        (<span style="color: #ffffff;">10</span>, <span style="color: #ffffff;">5</span>),
+        (<span style="color: #ffffff;">14</span>, <span style="color: #ffffff;">5</span>),
+        (<span style="color: #ffffff;">16</span>, <span style="color: #ffffff;">5</span>),
+        (<span style="color: #ffffff;">17</span>, <span style="color: #ffffff;">5</span>),
+        (<span style="color: #ffffff;">22</span>, <span style="color: #ffffff;">5</span>),
+        (<span style="color: #ffffff;">24</span>, <span style="color: #ffffff;">5</span>),
+        (<span style="color: #ffffff;">10</span>, <span style="color: #ffffff;">6</span>),
+        (<span style="color: #ffffff;">16</span>, <span style="color: #ffffff;">6</span>),
+        (<span style="color: #ffffff;">24</span>, <span style="color: #ffffff;">6</span>),
+        (<span style="color: #ffffff;">11</span>, <span style="color: #ffffff;">7</span>),
+        (<span style="color: #ffffff;">15</span>, <span style="color: #ffffff;">7</span>),
+        (<span style="color: #ffffff;">12</span>, <span style="color: #ffffff;">8</span>),
+        (<span style="color: #ffffff;">13</span>, <span style="color: #ffffff;">8</span>),
+    ];
+    <span style="color: #79a8ff;">for</span> (<span style="color: #4ae2f0;">dr</span>, <span style="color: #4ae2f0;">dc</span>) <span style="color: #79a8ff;">in</span> directions {
+        set_seeds_alive(arr, dr + <span style="color: #ffffff;">2</span>, dc + <span style="color: #ffffff;">25</span>);
+    }
+}  
+
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgb9b1c04" class="outline-3">
+<h3 id="orgb9b1c04">fn draw(arr: &amp;Vec&lt;Vec&lt;MyCell&gt;&gt;) -&gt; ()</h3>
+<div class="outline-text-3" id="text-orgb9b1c04">
+<ul class="org-ul">
+<li>绘制"一次"当前的生命游戏图("O"表示存活细胞,"-"表示死亡细胞)<br></li>
+</ul>
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #ef8386;">// draw the current cells' status</span>
+<span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">draw</span>(<span style="color: #4ae2f0;">arr</span>: &amp;<span style="color: #11c777;">Vec</span>&lt;<span style="color: #11c777;">Vec</span>&lt;<span style="color: #11c777;">MyCell</span>&gt;&gt;) -&gt; () {
+    <span style="color: #79a8ff;">for</span> <span style="color: #4ae2f0;">i</span> <span style="color: #79a8ff;">in</span> arr {
+        <span style="color: #79a8ff;">for</span> <span style="color: #4ae2f0;">j</span> <span style="color: #79a8ff;">in</span> i {
+            <span style="color: #79a8ff;">match</span> j.is_alive {
+                <span style="color: #b6a0ff;">true</span> =&gt; <span style="color: #feacd0;">print</span>!(<span style="color: #2fafff;">"O"</span>),
+                <span style="color: #b6a0ff;">false</span> =&gt; <span style="color: #feacd0;">print</span>!(<span style="color: #2fafff;">"-"</span>),
+            }
+        }
+        <span style="color: #feacd0;">print</span>!(<span style="color: #2fafff;">"</span><span style="color: #f78fe7;">\n</span><span style="color: #2fafff;">"</span>);
+    }
+}
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgfe52853" class="outline-3">
+<h3 id="orgfe52853">thread::sleep(Duration::from_secs_f32(0.15))</h3>
+<div class="outline-text-3" id="text-orgfe52853">
+<ul class="org-ul">
+<li>就是让当前的程序停止0.15秒再运行,防止"draw()"<br>
+还没在终端画完所有字符就继续执行了<br></li>
+</ul>
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #b6a0ff;">thread</span>::sleep(<span style="color: #11c777;">Duration</span>::from_secs_f32(<span style="color: #ffffff;">0.15</span>));
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgf58ec0e" class="outline-3">
+<h3 id="orgf58ec0e">fn flush_the_screen() -&gt; ()</h3>
+<div class="outline-text-3" id="text-orgf58ec0e">
+<ul class="org-ul">
+<li>向终端写入"\x1B[2J\x1B[H"清空屏幕并把光标移动到左上角<br></li>
+</ul>
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">flush_the_screen</span>() -&gt; () {
+    <span style="color: #feacd0;">print</span>!(<span style="color: #2fafff;">"</span><span style="color: #f78fe7;">\x1B</span><span style="color: #2fafff;">[2J</span><span style="color: #f78fe7;">\x1B</span><span style="color: #2fafff;">[H"</span>);
+}
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org564a8f5" class="outline-3">
+<h3 id="org564a8f5">fn update_alive_around_count(arr: &amp;mut Vec&lt;Vec&lt;MyCell&gt;&gt;) -&gt; ()</h3>
+<div class="outline-text-3" id="text-org564a8f5">
+<ul class="org-ul">
+<li>遍历arr,更新arr中每个MyCell(细胞)周围的存活细胞数并存入MyCell结构体<br>
+的"alive_around_cnt"成员中,方便统一管理MyCell<br></li>
+</ul>
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">update_alive_around_count</span>(<span style="color: #4ae2f0;">arr</span>: &amp;<span style="color: #79a8ff;">mut</span> <span style="color: #11c777;">Vec</span>&lt;<span style="color: #11c777;">Vec</span>&lt;<span style="color: #11c777;">MyCell</span>&gt;&gt;) -&gt; () {
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">max_cols</span>: <span style="color: #11c777;">usize</span> = arr.len() - <span style="color: #ffffff;">1</span>;
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">max_rows</span>: <span style="color: #11c777;">usize</span> = arr[<span style="color: #ffffff;">0</span>].len() - <span style="color: #ffffff;">1</span>;
+    <span style="color: #79a8ff;">for</span> <span style="color: #4ae2f0;">i</span> <span style="color: #79a8ff;">in</span> <span style="color: #ffffff;">0</span>..max_cols {
+        <span style="color: #79a8ff;">for</span> <span style="color: #4ae2f0;">j</span> <span style="color: #79a8ff;">in</span> <span style="color: #ffffff;">0</span>..max_rows {
+            <span style="color: #79a8ff;">match</span> count_cells_around(&amp;arr, i, j) {
+                -<span style="color: #ffffff;">1</span> =&gt; <span style="color: #79a8ff;">continue</span>,
+                <span style="color: #4ae2f0;">count</span> =&gt; <span style="color: #4ae2f0;">arr</span>[<span style="color: #4ae2f0;">i</span>][<span style="color: #4ae2f0;">j</span>].alive_around_cnt = count <span style="color: #79a8ff;">as</span> <span style="color: #11c777;">usize</span>,
+            }
+        }
+    }
+}
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orga067cb3" class="outline-3">
+<h3 id="orga067cb3">fn update_mycells(arr: &amp;mut Vec&lt;Vec&lt;MyCell&gt;&gt;) -&gt; ()</h3>
+<div class="outline-text-3" id="text-orga067cb3">
+<ul class="org-ul">
+<li>遍历arr,根据MyCell结构体中的"alive_around_cnt"和<br>
+"is_alive"判断"下一代"时当前细胞的"is_alive"状态<br></li>
+</ul>
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">update_mycells</span>(<span style="color: #4ae2f0;">arr</span>: &amp;<span style="color: #79a8ff;">mut</span> <span style="color: #11c777;">Vec</span>&lt;<span style="color: #11c777;">Vec</span>&lt;<span style="color: #11c777;">MyCell</span>&gt;&gt;) -&gt; () {
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">max_cols</span>: <span style="color: #11c777;">usize</span> = arr.len() - <span style="color: #ffffff;">1</span>;
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">max_rows</span>: <span style="color: #11c777;">usize</span> = arr[<span style="color: #ffffff;">0</span>].len() - <span style="color: #ffffff;">1</span>;
+    <span style="color: #79a8ff;">for</span> <span style="color: #4ae2f0;">i</span> <span style="color: #79a8ff;">in</span> <span style="color: #ffffff;">0</span>..max_cols {
+        <span style="color: #79a8ff;">for</span> <span style="color: #4ae2f0;">j</span> <span style="color: #79a8ff;">in</span> <span style="color: #ffffff;">0</span>..max_rows {
+            <span style="color: #79a8ff;">match</span> arr[i][j].is_alive {
+                <span style="color: #b6a0ff;">true</span> =&gt; {
+                    <span style="color: #79a8ff;">if</span> arr[i][j].alive_around_cnt &lt; <span style="color: #ffffff;">2</span> {
+                        <span style="color: #4ae2f0;">arr</span>[<span style="color: #4ae2f0;">i</span>][<span style="color: #4ae2f0;">j</span>].is_alive = <span style="color: #b6a0ff;">false</span>;
+                    } <span style="color: #79a8ff;">else</span> <span style="color: #79a8ff;">if</span> arr[i][j].alive_around_cnt &gt; <span style="color: #ffffff;">3</span> {
+                        <span style="color: #4ae2f0;">arr</span>[<span style="color: #4ae2f0;">i</span>][<span style="color: #4ae2f0;">j</span>].is_alive = <span style="color: #b6a0ff;">false</span>;
+                    }
+                }
+                <span style="color: #b6a0ff;">false</span> =&gt; {
+                    <span style="color: #79a8ff;">if</span> arr[i][j].alive_around_cnt == <span style="color: #ffffff;">3</span> {
+                        <span style="color: #4ae2f0;">arr</span>[<span style="color: #4ae2f0;">i</span>][<span style="color: #4ae2f0;">j</span>].is_alive = <span style="color: #b6a0ff;">true</span>;
+                    }
+                }
+            }
+        }
+    }
+}
+</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org854fbff" class="outline-2">
+<h2 id="org854fbff">程序流程图</h2>
+<div class="outline-text-2" id="text-org854fbff">
+<div class="org-src-container">
+<pre class="src src-mermaid"><code>flowchart TD
+  A([开始]) --&gt; B["初始化arr:Vec&lt;Vec&lt;MyCell&gt;&gt;"]
+  B --&gt; C["draw_the_gun(arr: &amp;mut Vec&lt;Vec&lt;MyCell&gt;&gt;) -&gt; ()"]
+  C --&gt; D["fn draw(arr: &amp;Vec&lt;Vec&lt;MyCell&gt;&gt;) -&gt; ()"]
+  D --&gt; E["thread::sleep(Duration::from_secs_f32(0.15));"]
+  E --&gt; F["fn flush_the_screen() -&gt; ()"]
+  F --&gt; G["fn update_alive_around_count(arr: &amp;mut Vec&lt;Vec&lt;MyCell&gt;&gt;) -&gt; ()"]
+  G --&gt; H["fn update_mycells(arr: &amp;mut Vec&lt;Vec&lt;MyCell&gt;&gt;) -&gt; ()"]
+  H --&gt; D
+</code></pre>
+</div>
+<ul class="org-ul">
+<li>求值结果<br></li>
+</ul>
+
+<figure id="org1d4c0e1">
+<img src="flowchart.png" alt="flowchart.png"><br>
+
+</figure>
+</div>
+</div>
+<div id="outline-container-orge2d9ab8" class="outline-2">
+<h2 id="orge2d9ab8">杂谈总结</h2>
+<div class="outline-text-2" id="text-orge2d9ab8">
+<p>
+才疏学浅,想着练练手于是开始写这个有意思的小项目,然后记录一下过程<br>
+,后面也会继续写着几个有意思的小项目拿来分享;作为rust初学者,写这<br>
+个代码过程中还是遇到很多困难,但我尽量避免了使用ai辅助编码和答疑<br>
+以更加充分地训练自己快速学习一个新的编程语言的能力,还有阅读保存信<br>
+息,查阅文档的能力;这次写代码让我发现自己似乎更喜欢这种按照兴趣自<br>
+由探索书写代码的过程,我似乎更喜欢一个没有明确目的的"冒险式"编程,<br>
+而不是去做八股文的算法题(但是适当做那些算法题目还是很有必要的orz.<br>
+好吧大概就是这样,一个小无聊又小有趣的生命游戏极简原型的博客就写这<br>
+么多吧哈哈<br>
+</p>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

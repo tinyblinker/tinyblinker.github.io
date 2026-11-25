@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>archlinux的dms-shell更新崩溃解析</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-09-13 Sun 00:10</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">archlinux的dms-shell更新崩溃解析</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#org2366836">1. 诊断结论</a></li>
+<li><a href="#org52b3814">2. 证据链（从 systemd 报错开始）</a></li>
+<li><a href="#orga2047b0">3. 对比验证</a></li>
+<li><a href="#org15867a8">4. 修复计划（推荐：降级并锁定，立即恢复可用）</a></li>
+<li><a href="#org2ad7213">5. 备选（向前修复，需上游/打包者补齐，暂不可行）</a></li>
+<li><a href="#org89fe184">6. 建议额外动作</a></li>
+<li><a href="#org3afcd0e">7. <span class="todo TODO">TODO</span> !!!!!!计划,这次cava的项目做完,视频剪辑完成后,就迁移到sway去,用unix-pron方式生存</a></li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-org2366836" class="outline-2">
+<h2 id="org2366836"><span class="section-number-2">1.</span> 诊断结论</h2>
+<div class="outline-text-2" id="text-1">
+<ul class="org-ul">
+<li>根本原因是 dms-shell / dms-shell-niri 在 9月4日 13:51 从 1.5.3-1 升级到 1.6.0-1，而 Arch 的 1.6.0 打包是有缺陷的。这次升级同时破坏了 greeter（greetd） 和 dms 桌面 shell 两处。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org52b3814" class="outline-2">
+<h2 id="org52b3814"><span class="section-number-2">2.</span> 证据链（从 systemd 报错开始）</h2>
+<div class="outline-text-2" id="text-2">
+<ul class="org-ul">
+<li>1. greetd.service → failed (Result: start-limit-hit)，journal 里循环出现：<br>
+greetd[767]: error: check_children: greeter exited without creating a session<br>
+greetd 的 greeter 是 dms-greeter &ndash;command niri -p /usr/share/quickshell/dms，它内部用 niri 拉起 quickshell -p /usr/share/quickshell/dms。quickshell 在 ~1 秒内崩溃退出 → 触发 niri msg action quit → greetd 判定 greeter 未创建会话而重启，5 次后 start-limit。<br></li>
+<li>2. greeter 崩溃的原因：/usr/share/quickshell/dms/shell.qml 第 13 行<br>
+import qs.DankCommon.Common as DC<br>
+而 /usr/share/quickshell/dms/DankCommon 是指向 ../dank-qml-common/DankCommon 的悬空符号链接，/usr/share/dank-qml-common 根本不存在，仓库里也没有 dank-qml-common 这个包（pacman -Ss 无结果）。这是 DMS 1.6.0 新增的 dank-qml-common submodule 依赖，Arch 包没带上。（GreeterContent.qml 也 import qs.DankCommon.Session）<br></li>
+<li>3. 即使绕过 greeter（用户 14:04/14:12 用 TTY 登录后），dms.service 也失败：<br>
+Error: this dms build has no embedded UI; pass -c &lt;dir&gt; or set DMS_SHELL_DIR<br>
+FATAL go: this dms build has no embedded UI; pass -c &lt;dir&gt; or set DMS_SHELL_DIR<br>
+/usr/lib/systemd/user/dms.service 执行 dms run &ndash;session（无 -c），但 Arch 的 dms 二进制是不带 withshell 编译标签构建的，没有内嵌 UI。<br></li>
+<li>4. 上游 1.6.0 发布说明明确写了 breaking change：UI 改为内嵌进二进制（需 -tags withshell），且 greeter 已独立为 dank-greeter。Arch 包既没内嵌 UI、又没给 dms.service 传 -c、还缺 dank-qml-common —— 三处都没跟上。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orga2047b0" class="outline-2">
+<h2 id="orga2047b0"><span class="section-number-2">3.</span> 对比验证</h2>
+<div class="outline-text-2" id="text-3">
+<ul class="org-ul">
+<li>1.5.3 的 shell.qml 只 import qs.Common/qs.Modules/qs.Services，不依赖 DankCommon；1.6.0 才引入 qs.DankCommon。<br></li>
+<li>1.5.3 的 dms 是内嵌 UI 的，dms run &ndash;session 正常工作。<br></li>
+<li>9月3日及 9月4日 12:55 的启动日志里 greeter 都正常（session opened for user shyweeds）。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org15867a8" class="outline-2">
+<h2 id="org15867a8"><span class="section-number-2">4.</span> 修复计划（推荐：降级并锁定，立即恢复可用）</h2>
+<div class="outline-text-2" id="text-4">
+<ul class="org-ul">
+<li><p>
+1. 降级三个包（缓存里都有旧包）：<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-shell"><code><span style="color: #d09dc0;">sudo</span> pacman -U /var/cache/pacman/pkg/dgop-0.2.3-1-x86_64.pkg.tar.zst \
+     /var/cache/pacman/pkg/dms-shell-1.5.3-1-x86_64.pkg.tar.zst \
+     /var/cache/pacman/pkg/dms-shell-niri-1.5.3-1-x86_64.pkg.tar.zst
+</code></pre>
+</div></li>
+</ul>
+<p>
+（dgop 需一起降到 0.2.3，因为 1.6.0 是配套发布）<br>
+</p>
+<ul class="org-ul">
+<li>2. 锁定版本防止再次被 -Syu 拉高，在 /etc/pacman.conf 加：<br>
+IgnorePkg = dgop dms-shell dms-shell-niri<br></li>
+<li>3. 重启验证（或直接 sudo systemctl restart greetd）：<br>
+<ul class="org-ul">
+<li>systemctl status greetd 应为 active，greeter 正常显示登录界面<br></li>
+<li>登录后 systemctl &ndash;user status dms.service 应为 active（DMS 桌面出现）<br></li>
+<li>确认 journalctl -u greetd 无 greeter exited without creating a session<br></li>
+<li>如要彻底回归，先 systemctl &ndash;user daemon-reload（无需改动 dms.service，1.5.3 已内嵌 UI）。<br></li>
+</ul></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org2ad7213" class="outline-2">
+<h2 id="org2ad7213"><span class="section-number-2">5.</span> 备选（向前修复，需上游/打包者补齐，暂不可行）</h2>
+<div class="outline-text-2" id="text-5">
+<ul class="org-ul">
+<li>安装缺失的 dank-qml-common（目前 Arch 仓库/AUR 无此包，需从 DMS 仓库 submodule 自行构建）<br></li>
+<li>给 dms.service 加 -c /usr/share/quickshell/dms（systemctl &ndash;user edit dms.service drop-in）——但仅修桌面、不修 greeter<br></li>
+<li>迁移到独立 dank-greeter 包并改 /etc/greetd/config.toml（该包同样未进 Arch 仓库）<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org89fe184" class="outline-2">
+<h2 id="org89fe184"><span class="section-number-2">6.</span> 建议额外动作</h2>
+<div class="outline-text-2" id="text-6">
+<ul class="org-ul">
+<li>向 Arch 维护者/上游报 issue：dms-shell 1.6.0 缺少 dank-qml-common 依赖、dms.service 未传 -c、且未按 1.6.0 要求内嵌 UI。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org3afcd0e" class="outline-2">
+<h2 id="org3afcd0e"><span class="section-number-2">7.</span> <span class="todo TODO">TODO</span> !!!!!!计划,这次cava的项目做完,视频剪辑完成后,就迁移到sway去,用unix-pron方式生存</h2>
+<div class="outline-text-2" id="text-7">
+<ul class="org-ul">
+<li>用Sway+一堆小组件,降低错误排查难度,同时换用Sway,防止niri这种一次性占一堆内存<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

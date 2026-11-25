@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>编译性语言_解释性语言_与多语言程序程序如何协作</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-11-01 Sun 14:49</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">编译性语言_解释性语言_与多语言程序程序如何协作</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#org356425f">1. 核心结论</a></li>
+<li><a href="#org76d65bb">2. 视频一:编译与解释代码如何共处同一程序中?</a>
+<ul>
+<li><a href="#org42478b7">2.1. 视频主旨</a></li>
+<li><a href="#org360d7df">2.2. 关键概念</a></li>
+<li><a href="#orga7d9316">2.3. 具体例子:用 Python 脚本扩展一个 C 程序</a></li>
+<li><a href="#org6889bb6">2.4. Python 的例子:解释器本身也可以是编译出来的</a></li>
+<li><a href="#org1e6713c">2.5. 本节重点</a></li>
+</ul>
+</li>
+<li><a href="#org7e51c7a">3. 视频二:为什么有些项目会使用多种编程语言?</a>
+<ul>
+<li><a href="#org9bf8d1f">3.1. 视频主旨</a></li>
+<li><a href="#org8635d30">3.2. 为什么项目要混用语言?</a></li>
+<li><a href="#orgaf9077d">3.3. 两种“多语言协作”:跨进程与同进程</a>
+<ul>
+<li><a href="#org9a8597d">3.3.1. 1. 不同进程之间:通过协议通信</a></li>
+<li><a href="#org8809a5b">3.3.2. 2. 同一进程之内:通过函数或库接口协作</a></li>
+</ul>
+</li>
+<li><a href="#org5d6289e">3.4. 编译与链接:多语言如何组合成可执行程序?</a></li>
+<li><a href="#org6255ba3">3.5. 例子:Rust 调用 C 函数</a></li>
+<li><a href="#org7980939">3.6. ABI:语言之间的“二进制合同”</a>
+<ul>
+<li><a href="#org16da9c7">3.6.1. 简化例子:结构体布局</a></li>
+</ul>
+</li>
+<li><a href="#orgc3707c5">3.7. 静态链接与动态链接</a></li>
+<li><a href="#orgdc2899b">3.8. 本节重点</a></li>
+</ul>
+</li>
+<li><a href="#orgeb82ddd">4. 两个视频的联系与区别</a></li>
+<li><a href="#org00b573e">5. 复习提纲</a></li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-org356425f" class="outline-2">
+<h2 id="org356425f"><span class="section-number-2">1.</span> 核心结论</h2>
+<div class="outline-text-2" id="text-1">
+<ul class="org-ul">
+<li><b>编译和解释不是互斥的程序类别.</b> 解释器本身可以是编译后运行的程序;它运行时再读取,分析并执行另一种语言的代码.<br></li>
+<li><b>多语言代码可以组成同一个项目.</b> 如果不同部分被编译成兼容的目标代码,并遵循相同的二进制接口约定,就可以通过链接或运行时接口相互调用.<br></li>
+<li><b>区分进程边界很重要.</b> 两个服务通过网络通信,与两种语言的代码在同一进程里互相调用,是两种不同层次的“协作”.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org76d65bb" class="outline-2">
+<h2 id="org76d65bb"><span class="section-number-2">2.</span> 视频一:编译与解释代码如何共处同一程序中?</h2>
+<div class="outline-text-2" id="text-2">
+</div>
+<div id="outline-container-org42478b7" class="outline-3">
+<h3 id="org42478b7"><span class="section-number-3">2.1.</span> 视频主旨</h3>
+<div class="outline-text-3" id="text-2-1">
+<p>
+视频讨论解释器和编译后的程序如何在一个项目中共存.关键点是:解释器并非“没有被编译的东西”,而是一个负责读取并执行其他代码的程序.解释器自身通常也需要先由编译器构建.<br>
+因此,一个应用可以由编译后的主体程序构成,同时嵌入解释器,让应用在运行时执行脚本.这里的“编译”和“解释”发生在不同的代码或不同的阶段,并不矛盾.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org360d7df" class="outline-3">
+<h3 id="org360d7df"><span class="section-number-3">2.2.</span> 关键概念</h3>
+<div class="outline-text-3" id="text-2-2">
+<ul class="org-ul">
+<li><b>编译器</b>:把一种语言的源代码转换成另一种表示,例如汇编,目标文件,字节码或机器码.<br></li>
+<li><b>解释器</b>:读取某种语言的程序,并按照该语言的规则执行它.实现方式可以不同:有的直接执行语法结构,有的先生成字节码,再由虚拟机执行.<br></li>
+<li><b>运行时</b>:程序执行期间提供的环境,例如解释器,垃圾回收器,标准库和动态加载机制.<br></li>
+<li><b>嵌入式解释器</b>:作为一个组件运行在宿主应用之中,由宿主程序调用其接口来执行脚本.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orga7d9316" class="outline-3">
+<h3 id="orga7d9316"><span class="section-number-3">2.3.</span> 具体例子:用 Python 脚本扩展一个 C 程序</h3>
+<div class="outline-text-3" id="text-2-3">
+<p>
+假设一个图像处理应用用 C 编写,要求运行速度快,但又希望用户能自定义处理流程.<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-text"><code>&#29992;&#25143;&#33050;&#26412;(Python)
+        |
+        v
+&#24212;&#29992;&#20013;&#30340; Python &#35299;&#37322;&#22120;
+        |
+        v
+C &#32534;&#20889;&#30340;&#22270;&#20687;&#22788;&#29702;&#31243;&#24207;
+</code></pre>
+</div>
+
+<p>
+可能的运行过程:<br>
+</p>
+
+<ol class="org-ol">
+<li>开发者把 C 应用编译成可执行程序.<br></li>
+<li>程序启动时,加载或初始化 Python 解释器.<br></li>
+<li>用户提供一个 Python 脚本,例如“把图片变成灰度图”.<br></li>
+<li>C 程序调用解释器接口,让解释器执行脚本.<br></li>
+<li>脚本通过宿主应用提供的函数调用图像处理能力.<br></li>
+</ol>
+
+<p>
+此时,应用的主体是编译后运行的 C 程序;脚本则是在运行时由解释器处理的 Python 代码.它们处在同一个应用架构中,但执行路径不同.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org6889bb6" class="outline-3">
+<h3 id="org6889bb6"><span class="section-number-3">2.4.</span> Python 的例子:解释器本身也可以是编译出来的</h3>
+<div class="outline-text-3" id="text-2-4">
+<p>
+以常见的 CPython 实现为例,可以把过程简化理解为:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-text"><code>Python &#28304;&#20195;&#30721;
+    |
+    v
+&#35299;&#26512;&#19982;&#32534;&#35793;&#38454;&#27573;
+    |
+    v
+&#23383;&#33410;&#30721;
+    |
+    v
+CPython &#34394;&#25311;&#26426;&#25191;&#34892;
+</code></pre>
+</div>
+
+<p>
+CPython 解释器实现本身主要由 C 代码构成,通常先编译成可执行程序;这个程序运行后,才负责处理 Python 程序.因而,“解释器是编译出来的程序”与“它解释执行 Python 代码”可以同时成立.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org1e6713c" class="outline-3">
+<h3 id="org1e6713c"><span class="section-number-3">2.5.</span> 本节重点</h3>
+<div class="outline-text-3" id="text-2-5">
+<ul class="org-ul">
+<li>“编译型语言”和“解释型语言”是对常见实现方式的概括,不代表两类程序完全不能组合.<br></li>
+<li>问“程序是不是编译的”时,要先明确指的是哪段代码:解释器本身,应用主体,还是用户脚本.<br></li>
+<li>嵌入解释器常用于脚本扩展,插件,自动化和可配置逻辑.<br></li>
+<li>把脚本交给解释器执行,并不意味着整个应用的所有代码都必须采用解释执行.<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-org7e51c7a" class="outline-2">
+<h2 id="org7e51c7a"><span class="section-number-2">3.</span> 视频二:为什么有些项目会使用多种编程语言?</h2>
+<div class="outline-text-2" id="text-3">
+</div>
+<div id="outline-container-org9bf8d1f" class="outline-3">
+<h3 id="org9bf8d1f"><span class="section-number-3">3.1.</span> 视频主旨</h3>
+<div class="outline-text-3" id="text-3-1">
+<p>
+视频说明项目采用多种语言的原因,以及这些语言如何在系统层面协作.语言选择往往是权衡:不同语言在性能,开发效率,生态,硬件访问和现有代码复用方面各有优势.<br>
+</p>
+
+<p>
+视频也区分了两种常见情形:<br>
+</p>
+
+<ul class="org-ul">
+<li>不同语言的组件运行在不同进程中,通过网络等方式通信.<br></li>
+<li>不同语言的代码在同一个进程中协作,通常需要编译,链接,运行时或外部函数接口等机制.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org8635d30" class="outline-3">
+<h3 id="org8635d30"><span class="section-number-3">3.2.</span> 为什么项目要混用语言?</h3>
+<div class="outline-text-3" id="text-3-2">
+<ul class="org-ul">
+<li><b>性能</b>:将计算密集或对延迟敏感的部分交给较低层语言实现.<br></li>
+<li><b>复用生态与既有代码</b>:继续使用成熟的库或历史代码,避免从头重写.<br></li>
+<li><b>开发效率</b>:用高级语言实现业务逻辑,脚本或快速迭代部分.<br></li>
+<li><b>系统能力</b>:需要直接处理硬件,内存,操作系统接口或特殊运行环境时,低层语言可能更合适.<br></li>
+<li><b>逐步迁移</b>:可以先替换某个模块,而不是一次性重写整个项目.<br></li>
+</ul>
+
+<p>
+混用语言不是目的本身.它只有在某种优势值得承担接口复杂度,构建成本和调试成本时才有意义.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-orgaf9077d" class="outline-3">
+<h3 id="orgaf9077d"><span class="section-number-3">3.3.</span> 两种“多语言协作”:跨进程与同进程</h3>
+<div class="outline-text-3" id="text-3-3">
+</div>
+<div id="outline-container-org9a8597d" class="outline-4">
+<h4 id="org9a8597d"><span class="section-number-4">3.3.1.</span> 1. 不同进程之间:通过协议通信</h4>
+<div class="outline-text-4" id="text-3-3-1">
+<p>
+例如,一个网站可能由 Python 后端提供服务,浏览器端使用 HTML,CSS 和 JavaScript.<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-text"><code>&#27983;&#35272;&#22120;&#36827;&#31243;                           &#26381;&#21153;&#22120;&#36827;&#31243;
+HTML / CSS / JavaScript  --HTTP--&gt;   Python &#21518;&#31471;
+</code></pre>
+</div>
+
+<p>
+两侧通过 HTTP 等协议交换请求和响应.这里通常不要求两种语言的代码被链接成同一个可执行文件;它们之间的边界是网络协议和数据格式.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org8809a5b" class="outline-4">
+<h4 id="org8809a5b"><span class="section-number-4">3.3.2.</span> 2. 同一进程之内:通过函数或库接口协作</h4>
+<div class="outline-text-4" id="text-3-3-2">
+<p>
+例如,Python 程序调用 C 编写的数值计算库:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-text"><code>Python &#24212;&#29992;
+    |
+    | &#22806;&#37096;&#20989;&#25968;&#25509;&#21475;(FFI)
+    v
+C &#20989;&#25968; / &#21160;&#24577;&#24211;
+</code></pre>
+</div>
+
+<p>
+这类调用通常发生在同一进程地址空间内.调用方和被调用方需要约定如何传递参数,返回结果,表示数据结构以及管理内存.<br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-org5d6289e" class="outline-3">
+<h3 id="org5d6289e"><span class="section-number-3">3.4.</span> 编译与链接:多语言如何组合成可执行程序?</h3>
+<div class="outline-text-3" id="text-3-4">
+<p>
+以常见的 C 工具链为例,流程可以简化为:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-text"><code>&#28304;&#20195;&#30721;
+  |
+  v
+&#39044;&#22788;&#29702;
+  |
+  v
+&#32534;&#35793;:&#29983;&#25104;&#27719;&#32534;&#25110;&#20013;&#38388;&#34920;&#31034;
+  |
+  v
+&#27719;&#32534;:&#29983;&#25104;&#30446;&#26631;&#25991;&#20214;
+  |
+  v
+&#38142;&#25509;:&#32452;&#21512;&#30446;&#26631;&#25991;&#20214;&#19982;&#24211;
+  |
+  v
+&#21487;&#25191;&#34892;&#25991;&#20214;
+</code></pre>
+</div>
+
+<ul class="org-ul">
+<li><b>预处理</b>:处理宏,条件编译和头文件等.<br></li>
+<li><b>编译</b>:检查并转换源代码;编译器可能先生成汇编或中间表示.<br></li>
+<li><b>汇编</b>:将汇编指令转换为机器码,通常产出目标文件.<br></li>
+<li><b>链接</b>:组合目标文件和库,解析函数,变量等符号引用,并生成最终程序.<br></li>
+</ul>
+
+<p>
+不同语言可以各自使用相应的编译器,生成可供链接的目标文件.链接器并不需要“理解”每种语言的高级语法;它主要处理目标文件,符号和地址等信息.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org6255ba3" class="outline-3">
+<h3 id="org6255ba3"><span class="section-number-3">3.5.</span> 例子:Rust 调用 C 函数</h3>
+<div class="outline-text-3" id="text-3-5">
+<p>
+假设 C 库提供一个加法函数:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-c"><code><span style="color: #11c777;">int</span> <span style="color: #f78fe7;">add</span>(<span style="color: #11c777;">int</span> <span style="color: #4ae2f0;">a</span>, <span style="color: #11c777;">int</span> <span style="color: #4ae2f0;">b</span>) {
+  <span style="color: #79a8ff;">return</span> a + b;
+}
+</code></pre>
+</div>
+
+<p>
+Rust 程序可以通过外部函数声明调用它.概念上,步骤是:<br>
+</p>
+
+<ol class="org-ol">
+<li>把 C 代码编译成目标文件或库.<br></li>
+<li>在 Rust 侧声明外部函数.<br></li>
+<li>构建时把 C 库链接进程序,或在运行时加载相应动态库.<br></li>
+<li>调用时按双方约定传递两个整数并接收返回值.<br></li>
+</ol>
+
+<p>
+这能够成功,不只是因为 C 和 Rust 最终都能产生机器码;还因为双方需要遵循兼容的调用约定和数据表示规则.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org7980939" class="outline-3">
+<h3 id="org7980939"><span class="section-number-3">3.6.</span> ABI:语言之间的“二进制合同”</h3>
+<div class="outline-text-3" id="text-3-6">
+<p>
+ABI(Application Binary Interface,应用程序二进制接口)规定了编译后组件如何互相配合.常见内容包括:<br>
+</p>
+
+<ul class="org-ul">
+<li>函数参数如何传递,例如通过寄存器还是栈.<br></li>
+<li>返回值如何传递.<br></li>
+<li>结构体,枚举等数据如何在内存中布局.<br></li>
+<li>函数名如何编码.<br></li>
+<li>异常,线程局部数据等运行时机制如何处理.<br></li>
+</ul>
+
+<p>
+可以把 ABI 想成双方必须遵守的插头规格:即使两个组件都已经编译成机器码,如果“插头”规格不一致,也可能无法正确连接.<br>
+</p>
+</div>
+<div id="outline-container-org16da9c7" class="outline-4">
+<h4 id="org16da9c7"><span class="section-number-4">3.6.1.</span> 简化例子:结构体布局</h4>
+<div class="outline-text-4" id="text-3-6-1">
+<p>
+C 侧定义了一个包含整数和浮点数的结构体.如果 Rust 侧按不同顺序,对齐或填充规则解释同一块内存,就可能读错数据.跨语言共享结构体时,通常需要明确规定布局,不能只依赖两种语言中看起来相似的类型定义.<br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-orgc3707c5" class="outline-3">
+<h3 id="orgc3707c5"><span class="section-number-3">3.7.</span> 静态链接与动态链接</h3>
+<div class="outline-text-3" id="text-3-7">
+<ul class="org-ul">
+<li><b>静态链接</b>:把所需的库代码纳入最终可执行文件.通常更自包含,但文件可能更大,更新库时往往需要重新构建程序.<br></li>
+<li><b>动态链接</b>:程序运行时加载共享库,例如 Linux 上常见的 <code>.so</code> 文件,Windows 上的 <code>.dll</code> 文件.可减少重复打包,但运行环境需要提供兼容的库.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgdc2899b" class="outline-3">
+<h3 id="orgdc2899b"><span class="section-number-3">3.8.</span> 本节重点</h3>
+<div class="outline-text-3" id="text-3-8">
+<ul class="org-ul">
+<li>多语言项目需要解决的不只是“怎样把不同源文件编译掉”,还包括接口,数据布局,依赖和运行时问题.<br></li>
+<li>跨进程协作通常通过网络协议或进程间通信;同进程协作通常涉及链接,动态库或 FFI.<br></li>
+<li>同一种语言并不自动保证二进制接口兼容;不同编译器,平台和构建设置也可能影响兼容性.<br></li>
+<li>多语言设计要看收益是否值得:性能,复用和灵活性,是否足以抵消接口与维护成本.<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-orgeb82ddd" class="outline-2">
+<h2 id="orgeb82ddd"><span class="section-number-2">4.</span> 两个视频的联系与区别</h2>
+<div class="outline-text-2" id="text-4">
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">主题</th>
+<th scope="col" class="org-left">视频一</th>
+<th scope="col" class="org-left">视频二</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">主要问题</td>
+<td class="org-left">编译型代码与解释型代码怎样共存?</td>
+<td class="org-left">为什么项目混用语言,语言怎样协作?</td>
+</tr>
+
+<tr>
+<td class="org-left">关注重点</td>
+<td class="org-left">解释器,运行时,嵌入脚本</td>
+<td class="org-left">编译流程,链接,ABI,跨语言调用</td>
+</tr>
+
+<tr>
+<td class="org-left">典型例子</td>
+<td class="org-left">编译后的应用调用解释器执行脚本</td>
+<td class="org-left">一种语言调用另一种语言的库或模块</td>
+</tr>
+
+<tr>
+<td class="org-left">共同认识</td>
+<td class="org-left">程序可以由不同处理方式,不同语言的组件构成;接口边界决定它们如何合作.</td>
+<td class="org-left">&nbsp;</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-org00b573e" class="outline-2">
+<h2 id="org00b573e"><span class="section-number-2">5.</span> 复习提纲</h2>
+<div class="outline-text-2" id="text-5">
+<ol class="org-ol">
+<li>解释器本身可以先被编译,再解释执行其他语言的代码.<br></li>
+<li>混合项目可以通过脚本解释执行,也可以通过目标文件链接或 FFI 调用.<br></li>
+<li>跨进程通信与同进程跨语言调用不是一回事.<br></li>
+<li>编译器,汇编器和链接器分别处理不同阶段.<br></li>
+<li>跨语言调用必须重视 ABI:调用约定,数据布局和运行时约定.<br></li>
+<li>混用语言的价值在于用合适的工具处理不同问题,而不是语言数量越多越好.<br></li>
+</ol>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

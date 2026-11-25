@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PCM数据用RustFFT转换为频谱的Debug过程</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-09-13 Sun 00:10</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">PCM数据用RustFFT转换为频谱的Debug过程</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#orgb9cd602">1. 一句话结论</a></li>
+<li><a href="#orga6b93f2">2. 现象</a></li>
+<li><a href="#orgfbd1395">3. 根因分析</a>
+<ul>
+<li><a href="#orgd7d9dd5">3.1. 数据流的两端速率不匹配</a></li>
+<li><a href="#org9d1c68b">3.2. 关键证据（用数字说话）</a></li>
+<li><a href="#orge18514e">3.3. 为什么容易误判</a></li>
+</ul>
+</li>
+<li><a href="#orga2e2b8d">4. 调试心路历程（复盘）</a></li>
+<li><a href="#orgd58e14f">5. 修复</a></li>
+<li><a href="#org95059da">6. 验证（端到端）</a></li>
+<li><a href="#orgfce8877">7. 经验教训（可复用）</a></li>
+<li><a href="#orge6297ec">8. 遗留建议（非本次 bug，仅供参考）</a></li>
+<li><a href="#org1d2ce54">9. ai的最终可行代码</a></li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-orgb9cd602" class="outline-2">
+<h2 id="orgb9cd602"><span class="section-number-2">1.</span> 一句话结论</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+ring buffer 本身 <b>从头到尾都没坏*。<br>
+真正的问题是：消费者在 *空转*（busy-loop 无脑 <code>pop_slice~），
+它的消费速度远快于生产者（音频回调）的填充速度，
+所以绝大多数 ~pop_slice</code> 都返回 0，*看起来</b> 就像 buffer 不工作。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-orga6b93f2" class="outline-2">
+<h2 id="orga6b93f2"><span class="section-number-2">2.</span> 现象</h2>
+<div class="outline-text-2" id="text-2">
+<ul class="org-ul">
+<li><p>
+控制台疯狂刷屏：<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-text"><code>Consuming fft input data too quickly!!
+poped_data_len = 0
+</code></pre>
+</div></li>
+<li>但最初几次 <code>poped_data_len = 1024</code>,之后就一直 = 0。<br></li>
+<li>于是直觉判断：「ring buffer 没有把数据传过来」。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgfbd1395" class="outline-2">
+<h2 id="orgfbd1395"><span class="section-number-2">3.</span> 根因分析</h2>
+<div class="outline-text-2" id="text-3">
+</div>
+<div id="outline-container-orgd7d9dd5" class="outline-3">
+<h3 id="orgd7d9dd5"><span class="section-number-3">3.1.</span> 数据流的两端速率不匹配</h3>
+<div class="outline-text-3" id="text-3-1">
+<ul class="org-ul">
+<li>生产者：CPAL 音频回调，每 ~21ms 才来一批（~2048 个采样）。<br></li>
+<li>消费者：一个 <code>loop { pop_slice; FFT }</code> 的 *无等待空转*，<br>
+每秒钟能空跑几千次。<br></li>
+<li>结果：消费者先把预填充的数据瞬间吃光，之后每次醒来看 buffer 都是<br>
+空的/不满的，于是返回 0 或部分数据。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org9d1c68b" class="outline-3">
+<h3 id="org9d1c68b"><span class="section-number-3">3.2.</span> 关键证据（用数字说话）</h3>
+<div class="outline-text-3" id="text-3-2">
+<p>
+在同一台机器上跑 3 秒并统计日志：<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-text"><code>producer &#22238;&#35843;&#27425;&#25968;&#65288;pushed_slice_cnt = 2048&#65289;:  138 &#27425;   &lt;- &#19968;&#30452;&#22312;&#20135;
+consumer &#25104;&#21151; pop &#28385; 1024 &#30340;&#27425;&#25968;:               280 &#27425;   &lt;- &#26377;&#25968;&#25454;&#26102;&#33021;&#21507;&#28385;
+consumer &#31354;&#36716; pop=0 &#30340;&#27425;&#25968;:                    21983 &#27425;  &lt;- &#31354;&#36716;&#25165;&#26159;&#22823;&#22836;
+</code></pre>
+</div>
+<ul class="org-ul">
+<li>138 × 2048 ≈ 282k 个采样，与 280 × 1024 ≈ 286k 基本吻合，<br>
+说明 <b>数据一字不差地通过了 ring buffer</b> .<br></li>
+<li>那 21983 次空转，才是「poped_data_len 始终 = 0」的假象来源。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orge18514e" class="outline-3">
+<h3 id="orge18514e"><span class="section-number-3">3.3.</span> 为什么容易误判</h3>
+<div class="outline-text-3" id="text-3-3">
+<ul class="org-ul">
+<li>只盯着消费者一侧的打印，没去看生产者那一侧。<br></li>
+<li>预填充的 4096 个 ~EQUILIBRIUM~（静音）数据，让程序「前几次能吃到<br>
+1024、之后就 0」，这个「先有后无」的现象极具迷惑性。<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-orga2e2b8d" class="outline-2">
+<h2 id="orga2e2b8d"><span class="section-number-2">4.</span> 调试心路历程（复盘）</h2>
+<div class="outline-text-2" id="text-4">
+<ol class="org-ol">
+<li><b>先别急着改代码，先分清「谁没工作」。</b><br>
+ring buffer 是 SPSC 的两端，必须 <b>分别</b> 验证生产端和消费端：<br>
+<ul class="org-ul">
+<li>生产端：给回调加计数，看它到底有没有被调用、每次 push 多少。<br>
+结果：138 次、每次完整 push 2048，生产端完全正常。<br></li>
+<li>消费端：统计 pop 返回值分布。<br>
+结果：有数据时能 pop 满，但空转次数是有效次数的 ~78 倍。<br></li>
+</ul></li>
+<li><b>把「症状」翻译成「速率不匹配」。</b><br>
+<ul class="org-ul">
+<li>「pop 返回 0」≠「没数据」，也可能是「我来早了 / 我吃太快了」。<br></li>
+</ul></li>
+<li><b>对照上游 CPAL 的 fft 例子。</b><br>
+<ul class="org-ul">
+<li>老版本 cpal 的 <code>examples/fft.rs</code> 用的是「先 <code>consumer.len()</code> 判断，<br>
+不够就 continue 等」的写法；正是缺了这一步「等」。<br></li>
+</ul></li>
+<li><b>注意 ringbuf 版本 API 差异。</b><br>
+<ul class="org-ul">
+<li>老例子里 <code>consumer.len()</code> 在 ringbuf 0.5 里变成了<br>
+<code>consumer.occupied_len()~（~Observer</code> trait 的方法），<br>
+<code>HeapRb::new().split()</code> 拆出 producer/consumer 是对的，<br>
+但需要把 <code>Observer</code> 也引入作用域才能调 ~occupied_len()~。<br></li>
+</ul></li>
+</ol>
+</div>
+</div>
+<div id="outline-container-orgd58e14f" class="outline-2">
+<h2 id="orgd58e14f"><span class="section-number-2">5.</span> 修复</h2>
+<div class="outline-text-2" id="text-5">
+<ul class="org-ul">
+<li>消费者改成「先等够 FFT_SIZE 个采样，再一次性吃满」：<br></li>
+</ul>
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">while</span> consumer.occupied_len() &lt; <span style="color: #11c777;">FFT_SIZE</span> {
+    <span style="color: #b6a0ff;">std</span>::<span style="color: #b6a0ff;">thread</span>::sleep(<span style="color: #b6a0ff;">std</span>::<span style="color: #b6a0ff;">time</span>::<span style="color: #11c777;">Duration</span>::from_millis(<span style="color: #ffffff;">1</span>));
+}
+<span style="color: #79a8ff;">let</span> <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">window</span> = [<span style="color: #11c777;">T</span>::<span style="color: #11c777;">EQUILIBRIUM</span>; <span style="color: #11c777;">FFT_SIZE</span>];
+consumer.pop_slice(&amp;<span style="color: #79a8ff;">mut</span> window);
+</code></pre>
+</div>
+<ul class="org-ul">
+<li>去掉了导致误解的预填充（那是 cpal 双工例子做延迟补偿用的，纯采集不需要）。<br></li>
+<li>去掉了刷屏的 per-callback ~println!~，峰值信息每 50 帧打印一次。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org95059da" class="outline-2">
+<h2 id="org95059da"><span class="section-number-2">6.</span> 验证（端到端）</h2>
+<div class="outline-text-2" id="text-6">
+<p>
+用一个 1000 Hz 的正弦波打到 ~default_sink~，看 FFT 能否抓到：<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-sh"><code><span style="color: #d09dc0;">ffmpeg</span> -f lavfi -i <span style="color: #2fafff;">"sine=frequency=1000:sample_rate=48000:duration=8"</span> \
+       -ac 2 -ar 48000 tone.wav
+<span style="color: #ef8386;"># &#19968;&#36793;&#36305;&#31243;&#24207;&#65292;&#19968;&#36793;&#65306;</span>
+<span style="color: #d09dc0;">pw-play</span> tone.wav
+</code></pre>
+</div>
+<p>
+程序输出：<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-text"><code>frame   150: peak bin =  11, magnitude = 37.179
+frame   200: peak bin =  11, magnitude = 37.968
+</code></pre>
+</div>
+<p>
+峰值稳定出现在 bin 11、幅度 ~37，说明真实音频数据已经<br>
+<b>从设备 → 回调 → ring buffer → 消费者 → FFT</b> 全链路跑通。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-orgfce8877" class="outline-2">
+<h2 id="orgfce8877"><span class="section-number-2">7.</span> 经验教训（可复用）</h2>
+<div class="outline-text-2" id="text-7">
+<ol class="org-ol">
+<li>调 SPSC/队列问题时，*一定要分别给生产端和消费端加计数*，<br>
+用「总产量 ≈ 总消费量」来判断到底哪一端有问题。<br></li>
+<li>「返回 0」要多问一句：是「真没数据」，还是「消费者太快 / 生产者太慢」。<br></li>
+<li>消费者不要在热循环里无脑 ~pop~；要么阻塞/休眠等待，<br>
+要么用「攒够一批再处理」的批量策略。<br></li>
+<li>参考上游例子时，先核对依赖版本，API 可能已经改名<br>
+(<code>len</code> → <code>occupied_len</code>, <code>push</code> → <code>try_push/push_slice</code> 等).<br></li>
+<li>用真实信号（正弦波）做端到端验证，比「看打印」更有说服力，<br>
+能一次性确认整条链路而非某一段。<br></li>
+</ol>
+</div>
+</div>
+<div id="outline-container-orge6297ec" class="outline-2">
+<h2 id="orge6297ec"><span class="section-number-2">8.</span> 遗留建议（非本次 bug，仅供参考）</h2>
+<div class="outline-text-2" id="text-8">
+<ul class="org-ul">
+<li>输入是 2 声道交错（L,R,L,R…），直接塞进 FFT 会把 L/R 混在一起，<br>
+峰值频点会偏移（本例 1000 Hz 出现在 bin 11 而非理论 bin 21）。<br>
+做频谱可视化前建议先「降混成单声道」（取 (L+R)/2）再 FFT。<br></li>
+<li>1ms 的 sleep 对可视化足够，若追求更低延迟/省 CPU，可换成<br>
+<code>condvar</code> 或定时器驱动的消费节奏。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org1d2ce54" class="outline-2">
+<h2 id="org1d2ce54"><span class="section-number-2">9.</span> ai的最终可行代码</h2>
+<div class="outline-text-2" id="text-9">
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">use</span> <span style="color: #b6a0ff;">anyhow</span>::anyhow;
+<span style="color: #79a8ff;">use</span> <span style="color: #b6a0ff;">cpal</span>::{
+    <span style="color: #b6a0ff;">traits</span>::{<span style="color: #11c777;">DeviceTrait</span>, <span style="color: #11c777;">HostTrait</span>, <span style="color: #11c777;">StreamTrait</span>},
+    <span style="color: #11c777;">Device</span>, <span style="color: #11c777;">Error</span>, <span style="color: #11c777;">ErrorKind</span>, <span style="color: #11c777;">FromSample</span>, <span style="color: #11c777;">InputCallbackInfo</span>, <span style="color: #11c777;">SampleFormat</span>, <span style="color: #11c777;">SizedSample</span>,
+    <span style="color: #11c777;">StreamConfig</span>,
+};
+<span style="color: #79a8ff;">use</span> <span style="color: #b6a0ff;">ringbuf</span>::{
+    <span style="color: #b6a0ff;">traits</span>::{<span style="color: #11c777;">Consumer</span>, <span style="color: #11c777;">Observer</span>, <span style="color: #11c777;">Producer</span>, <span style="color: #11c777;">Split</span>},
+    <span style="color: #11c777;">HeapRb</span>,
+};
+<span style="color: #79a8ff;">use</span> <span style="color: #b6a0ff;">rustfft</span>::{
+    <span style="color: #b6a0ff;">num_complex</span>::{<span style="color: #11c777;">Complex</span>, <span style="color: #11c777;">Complex32</span>},
+    <span style="color: #11c777;">FftPlanner</span>,
+};
+
+<span style="color: #79a8ff;">const</span> <span style="color: #11c777;">FFT_SIZE</span>: <span style="color: #11c777;">usize</span> = <span style="color: #ffffff;">1024</span>;
+
+<span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">err_fn</span>(<span style="color: #4ae2f0;">err</span>: <span style="color: #11c777;">Error</span>) {
+    <span style="color: #79a8ff;">match</span> err.kind() {
+        <span style="color: #11c777;">ErrorKind</span>::<span style="color: #11c777;">DeviceChanged</span> | <span style="color: #11c777;">ErrorKind</span>::<span style="color: #11c777;">RealtimeDenied</span> =&gt; {
+            <span style="color: #feacd0;">eprintln</span>!(<span style="color: #2fafff;">"{err}"</span>)
+        }
+        _ =&gt; <span style="color: #feacd0;">eprintln</span>!(<span style="color: #2fafff;">"Stream error: {err}"</span>),
+    }
+}
+
+<span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">run</span>&lt;<span style="color: #11c777;">T</span>&gt;(<span style="color: #4ae2f0;">input_device</span>: &amp;<span style="color: #11c777;">Device</span>, <span style="color: #4ae2f0;">config</span>: <span style="color: #11c777;">StreamConfig</span>) -&gt; <span style="color: #11c777;">Result</span>&lt;(), <span style="color: #b6a0ff;">anyhow</span>::<span style="color: #11c777;">Error</span>&gt;
+<span style="color: #79a8ff;">where</span>
+    <span style="color: #11c777;">T</span>: <span style="color: #11c777;">SizedSample</span>
+        + <span style="color: #b6a0ff;">std</span>::<span style="color: #b6a0ff;">fmt</span>::<span style="color: #11c777;">Debug</span>
+        + <span style="color: #11c777;">Send</span>
+        + 'static
+        + <span style="color: #b6a0ff;">rustfft</span>::<span style="color: #b6a0ff;">num_traits</span>::<span style="color: #11c777;">FromPrimitive</span>
+        + <span style="color: #b6a0ff;">rustfft</span>::<span style="color: #b6a0ff;">num_traits</span>::<span style="color: #11c777;">Signed</span>
+        + <span style="color: #b6a0ff;">std</span>::<span style="color: #b6a0ff;">marker</span>::<span style="color: #11c777;">Sync</span>,
+    <span style="color: #11c777;">f32</span>: <span style="color: #11c777;">FromSample</span>&lt;<span style="color: #11c777;">T</span>&gt;,
+{
+    <span style="color: #ef8386;">// Create RingBuffer for "input_data_fn" (producer), for the "RustFFT"(consumer)</span>
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">ring_capacity</span> = <span style="color: #11c777;">FFT_SIZE</span> * <span style="color: #ffffff;">8</span>;
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">ring</span> = <span style="color: #11c777;">HeapRb</span>::&lt;<span style="color: #11c777;">T</span>&gt;::new(ring_capacity);
+    <span style="color: #79a8ff;">let</span> (<span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">producer</span>, <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">consumer</span>) = ring.split();
+
+    <span style="color: #ef8386;">// "move" &#33021;&#35753;&#38381;&#21253;&#25429;&#33719;&#30340;&#22806;&#37096;&#21464;&#37327;&#25343;&#36208;&#25152;&#26377;&#26435;,&#32780;&#19981;&#26159;&#32487;&#32493;&#20511;&#29992;&#20182;&#20204;</span>
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">input_data_fn</span> = <span style="color: #79a8ff;">move</span> |<span style="color: #4ae2f0;">data</span>: &amp;[<span style="color: #11c777;">T</span>], _: &amp;<span style="color: #11c777;">InputCallbackInfo</span>| {
+        <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">pushed_slice_cnt</span> = producer.push_slice(data);
+        <span style="color: #79a8ff;">if</span> pushed_slice_cnt &lt; data.len() {
+            <span style="color: #feacd0;">eprintln</span>!(<span style="color: #2fafff;">"Producing fft input data too quickly!!"</span>);
+        }
+    };
+
+    <span style="color: #ef8386;">// Build streams.</span>
+    <span style="color: #feacd0;">println</span>!(
+        <span style="color: #2fafff;">"Attempting to build input stream with {} samples and `{config:?}`."</span>,
+        <span style="color: #11c777;">T</span>::<span style="color: #11c777;">FORMAT</span>
+    );
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">input_stream</span> = input_device.build_input_stream(config, input_data_fn, err_fn, <span style="color: #11c777;">None</span>)?;
+    <span style="color: #feacd0;">println</span>!(<span style="color: #2fafff;">"Successfully built streams."</span>);
+
+    <span style="color: #ef8386;">// play the stream(should be alive in this thread always!)</span>
+    input_stream.play()?;
+
+    <span style="color: #ef8386;">// RustFFT</span>
+    <span style="color: #79a8ff;">let</span> <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">planner</span> = <span style="color: #11c777;">FftPlanner</span>::&lt;<span style="color: #11c777;">f32</span>&gt;::new();
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">fft</span> = planner.plan_fft_forward(<span style="color: #11c777;">FFT_SIZE</span>);
+    <span style="color: #79a8ff;">let</span> <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">fft_counter</span>: <span style="color: #11c777;">u64</span> = <span style="color: #ffffff;">0</span>;
+    <span style="color: #79a8ff;">loop</span> {
+        <span style="color: #ef8386;">// &#20851;&#38190;:&#29983;&#20135;&#32773;(&#38899;&#39057;&#22238;&#35843;)&#22823;&#32422;&#27599; 20ms &#25165;&#22635;&#36827;&#26469;&#19968;&#25209;&#25968;&#25454;,</span>
+        <span style="color: #ef8386;">// &#32780;&#28040;&#36153;&#32773;&#22914;&#26524;&#31354;&#36716;(&#26080;&#33041; pop_slice),&#36895;&#24230;&#36828;&#24555;&#20110;&#29983;&#20135;&#32773;,</span>
+        <span style="color: #ef8386;">// &#20110;&#26159;&#32477;&#22823;&#22810;&#25968; pop &#37117;&#36820;&#22238; 0,&#30475;&#36215;&#26469;&#23601;&#20687; ring buffer "&#19981;&#24037;&#20316;"&#12290;</span>
+        <span style="color: #ef8386;">// &#27491;&#30830;&#20570;&#27861;:&#20808;&#31561; ring buffer &#25874;&#22815; FFT_SIZE &#20010;&#37319;&#26679;,&#20877;&#28040;&#36153;&#12290;</span>
+        <span style="color: #79a8ff;">while</span> consumer.occupied_len() &lt; <span style="color: #11c777;">FFT_SIZE</span> {
+            <span style="color: #b6a0ff;">std</span>::<span style="color: #b6a0ff;">thread</span>::sleep(<span style="color: #b6a0ff;">std</span>::<span style="color: #b6a0ff;">time</span>::<span style="color: #11c777;">Duration</span>::from_millis(<span style="color: #ffffff;">1</span>));
+        }
+
+        <span style="color: #79a8ff;">let</span> <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">window</span> = [<span style="color: #11c777;">T</span>::<span style="color: #11c777;">EQUILIBRIUM</span>; <span style="color: #11c777;">FFT_SIZE</span>];
+        consumer.pop_slice(&amp;<span style="color: #79a8ff;">mut</span> window);
+
+        <span style="color: #79a8ff;">let</span> <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">buffer</span>: <span style="color: #11c777;">Vec</span>&lt;<span style="color: #11c777;">Complex</span>&lt;<span style="color: #11c777;">f32</span>&gt;&gt; = window
+            .iter()
+            .map(|&amp;<span style="color: #4ae2f0;">x</span>| <span style="color: #11c777;">Complex32</span>::new(x.to_sample::&lt;<span style="color: #11c777;">f32</span>&gt;(), <span style="color: #ffffff;">0.0</span>))
+            .collect();
+        fft.process(&amp;<span style="color: #79a8ff;">mut</span> buffer);
+
+        <span style="color: #ef8386;">// &#25171;&#21360;&#26368;&#22823;&#24133;&#20540;&#25152;&#22312;&#30340;&#39057;&#28857;,&#20415;&#20110;&#32905;&#30524;&#30830;&#35748;&#25968;&#25454;&#30830;&#23454;&#22312;&#27969;&#21160;&#12290;</span>
+        <span style="color: #ef8386;">// &#27599; 50 &#24103;&#25171;&#21360;&#19968;&#27425;,&#36991;&#20813;&#21047;&#23631;&#12290;</span>
+        <span style="color: #4ae2f0;">fft_counter</span> += <span style="color: #ffffff;">1</span>;
+        <span style="color: #79a8ff;">if</span> fft_counter.is_multiple_of(<span style="color: #ffffff;">50</span>) {
+            <span style="color: #79a8ff;">let</span> (<span style="color: #4ae2f0;">bin</span>, <span style="color: #4ae2f0;">mag</span>) = buffer
+                .iter()
+                .take(<span style="color: #11c777;">FFT_SIZE</span> / <span style="color: #ffffff;">2</span>)
+                .enumerate()
+                .max_by(|(_, <span style="color: #4ae2f0;">a</span>), (_, <span style="color: #4ae2f0;">b</span>)| a.norm().partial_cmp(&amp;b.norm()).unwrap())
+                .unwrap();
+            <span style="color: #feacd0;">println</span>!(
+                <span style="color: #2fafff;">"frame {fft_counter:&gt;5}: peak bin = {bin:&gt;3}, magnitude = {:.3}"</span>,
+                mag.norm()
+            );
+        }
+    }
+}
+
+<span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">main</span>() -&gt; <span style="color: #11c777;">Result</span>&lt;(), <span style="color: #b6a0ff;">anyhow</span>::<span style="color: #11c777;">Error</span>&gt; {
+    <span style="color: #ef8386;">// init Host and Device</span>
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">host</span> = <span style="color: #b6a0ff;">cpal</span>::host_from_id(<span style="color: #b6a0ff;">cpal</span>::<span style="color: #11c777;">HostId</span>::<span style="color: #11c777;">PipeWire</span>)?;
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">input_device</span> = host
+        .devices()?
+        .find(|<span style="color: #4ae2f0;">d</span>| {
+            d.description()
+                .map(|<span style="color: #4ae2f0;">des</span>| des.name() == <span style="color: #2fafff;">"default_sink"</span>)
+                .unwrap_or(<span style="color: #b6a0ff;">false</span>)
+        })
+        .ok_or(anyhow!(<span style="color: #2fafff;">"Cannot find the </span><span style="color: #f78fe7;">\"</span><span style="color: #2fafff;">default_sink</span><span style="color: #f78fe7;">\"</span><span style="color: #2fafff;">!"</span>))?;
+    <span style="color: #feacd0;">println</span>!(<span style="color: #2fafff;">"input device: {}"</span>, input_device);
+
+    <span style="color: #ef8386;">// init the config</span>
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">input_config</span> = input_device.default_input_config()?;
+    <span style="color: #feacd0;">println</span>!(
+        <span style="color: #2fafff;">"sample rate: {} Hz, channels: {}, format: {:?}"</span>,
+        input_config.sample_rate(),
+        input_config.channels(),
+        input_config.sample_format()
+    );
+
+    <span style="color: #ef8386;">// run() &#20869;&#37096;&#25345;&#26377; input_stream &#24182;&#36827;&#20837;&#26080;&#38480;&#24490;&#29615;,stream &#19968;&#30452;&#23384;&#27963;;</span>
+    <span style="color: #ef8386;">// &#22240;&#27492;&#36825;&#37324;&#26080;&#38656;&#20877;&#39069;&#22806;&#25345;&#26377;&#36820;&#22238;&#20540;&#12290;</span>
+    <span style="color: #79a8ff;">match</span> input_config.sample_format() {
+        <span style="color: #ef8386;">// SampleFormat::I8 =&gt; run::&lt;i8&gt;(&amp;input_device, input_config.into()),</span>
+        <span style="color: #ef8386;">// SampleFormat::I16 =&gt; run::&lt;i16&gt;(&amp;input_device, input_config.into()),</span>
+        <span style="color: #ef8386;">// SampleFormat::I32 =&gt; run::&lt;i32&gt;(&amp;input_device, input_config.into()),</span>
+        <span style="color: #ef8386;">// SampleFormat::I64 =&gt; run::&lt;i64&gt;(&amp;input_device, input_config.into()),</span>
+        <span style="color: #ef8386;">// SampleFormat::U8 =&gt; run::&lt;u8&gt;(&amp;input_device, input_config.into()),</span>
+        <span style="color: #ef8386;">// SampleFormat::U16 =&gt; run::&lt;u16&gt;(&amp;input_device, input_config.into()),</span>
+        <span style="color: #ef8386;">// SampleFormat::U32 =&gt; run::&lt;u32&gt;(&amp;input_device, input_config.into()),</span>
+        <span style="color: #ef8386;">// SampleFormat::U64 =&gt; run::&lt;u64&gt;(&amp;input_device, input_config.into()),</span>
+        <span style="color: #11c777;">SampleFormat</span>::<span style="color: #11c777;">F32</span> =&gt; run::&lt;<span style="color: #11c777;">f32</span>&gt;(&amp;input_device, input_config.into())?,
+        <span style="color: #ef8386;">// SampleFormat::F64 =&gt; run::&lt;f64&gt;(&amp;input_device, input_config.into()),</span>
+
+        <span style="color: #4ae2f0;">sample_format</span> =&gt; <span style="color: #feacd0;">panic</span>!(<span style="color: #2fafff;">"Unsupported sample format '{sample_format}'"</span>),
+    }
+
+    <span style="color: #ef8386;">// leave the thread sleep</span>
+    <span style="color: #79a8ff;">loop</span> {
+        <span style="color: #b6a0ff;">std</span>::<span style="color: #b6a0ff;">thread</span>::park();
+    }
+}
+</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

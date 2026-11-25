@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RustDebug技巧之cargo_test卡死</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-10-19 Mon 15:56</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">RustDebug技巧之cargo_test卡死</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#orgc0118a5">1. 适用场景</a></li>
+<li><a href="#orgd96acf0">2. 排查步骤</a>
+<ul>
+<li><a href="#orge53037f">2.1. 第 1 步:只编译,不运行</a></li>
+<li><a href="#orgb816eec">2.2. 第 2 步:列出测试</a></li>
+<li><a href="#org4a0a0bd">2.3. 第 3 步:串行运行并加超时</a></li>
+<li><a href="#org85d4ebd">2.4. 第 4 步:用过滤和跳过继续缩小范围</a></li>
+<li><a href="#org729416a">2.5. 第 5 步:判断是忙等还是等待</a></li>
+<li><a href="#org46c79ef">2.6. 第 6 步:用 gdb 抓调用栈</a></li>
+<li><a href="#orgcb59132">2.7. 第 7 步:gdb 不可用时的替代工具</a>
+<ul>
+<li><a href="#orga390da9">2.7.1. perf:找热点函数</a></li>
+<li><a href="#orgdb8f65e">2.7.2. strace:判断是否在等待系统调用</a></li>
+<li><a href="#orgc8f86f2">2.7.3. 临时日志:确认循环是否在重复</a></li>
+</ul>
+</li>
+<li><a href="#org8c0b402">2.8. 第 8 步:回到源码,检查循环的退出条件和进展</a></li>
+<li><a href="#org535474b">2.9. 第 9 步:用最小输入验证根因</a></li>
+<li><a href="#orgbbae7a7">2.10. 第 10 步:修复并回归</a></li>
+</ul>
+</li>
+<li><a href="#org6bec09c">3. 本案例结论</a></li>
+<li><a href="#orge46c3b9">4. 常用命令速查</a>
+<ul>
+<li><a href="#orgda5f276">4.1. 编译测试但不运行</a></li>
+<li><a href="#orgce2fbce">4.2. 列出测试</a></li>
+<li><a href="#orgd923bc4">4.3. 串行运行并观察卡住的测试</a></li>
+<li><a href="#orgcf0f399">4.4. 精确运行某个测试</a></li>
+<li><a href="#org2e45f38">4.5. 跳过指定测试</a></li>
+<li><a href="#orgd0dd7a7">4.6. 查看线程 CPU</a></li>
+<li><a href="#orgbd22c6c">4.7. gdb 抓所有线程栈</a></li>
+<li><a href="#org70ae99d">4.8. perf 找热点</a></li>
+<li><a href="#orgfe286c0">4.9. strace 看系统调用</a></li>
+</ul>
+</li>
+<li><a href="#org60850d6">5. 排查清单</a></li>
+<li><a href="#org876be42">6. 经验总结</a></li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-orgc0118a5" class="outline-2">
+<h2 id="orgc0118a5"><span class="section-number-2">1.</span> 适用场景</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+当 <code>cargo test</code> 出现以下情况时,可以参考本手册:<br>
+</p>
+
+<ul class="org-ul">
+<li>终端长时间没有输出,命令不返回<br></li>
+<li>测试进程占用大量 CPU,但一直没有结果<br></li>
+<li>不知道是哪个测试卡住<br></li>
+<li>不知道是死循环,死锁,还是在等待 IO<br></li>
+<li>想在不依赖 AI 的情况下,用系统工具定位根因<br></li>
+</ul>
+
+<p>
+核心原则:<br>
+</p>
+
+<ol class="org-ol">
+<li><b>不要直接运行没有超时保护的完整测试套件.</b><br></li>
+<li>先编译,后运行,先缩小范围,再深入.<br></li>
+<li>先判断“忙等”还是“等待”,再选择排查工具.<br></li>
+<li>用调用栈和源码定位,不靠猜.<br></li>
+<li>对每个循环检查“退出条件”和“每轮是否推进状态”.<br></li>
+</ol>
+</div>
+</div>
+<div id="outline-container-orgd96acf0" class="outline-2">
+<h2 id="orgd96acf0"><span class="section-number-2">2.</span> 排查步骤</h2>
+<div class="outline-text-2" id="text-2">
+</div>
+<div id="outline-container-orge53037f" class="outline-3">
+<h3 id="orge53037f"><span class="section-number-3">2.1.</span> 第 1 步:只编译,不运行</h3>
+<div class="outline-text-3" id="text-2-1">
+<p>
+先确认问题不是编译错误,同时拿到测试二进制路径:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">cd</span> /home/shyweeds/Projects/lisp_rs
+<span style="color: #d09dc0;">cargo</span> test --no-run
+</code></pre>
+</div>
+
+<p>
+输出示例:<br>
+</p>
+
+<pre class="example" id="org2a9c431">
+Executable unittests src/lib.rs (target/debug/deps/my_lisp-8f18af13d95c8e05)
+</pre>
+
+<p>
+<code>cargo test --no-run</code> 只编译,不会执行测试,所以不会因为死循环卡住.<br>
+</p>
+
+<p>
+后续尽量直接运行这个测试二进制,原因:<br>
+</p>
+
+<ul class="org-ul">
+<li>不受 Cargo 外层进程干扰<br></li>
+<li>更容易配合 <code>timeout</code>, <code>gdb</code>, <code>perf</code>, <code>strace</code><br></li>
+<li>退出码和信号更直观<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgb816eec" class="outline-3">
+<h3 id="orgb816eec"><span class="section-number-3">2.2.</span> 第 2 步:列出测试</h3>
+<div class="outline-text-3" id="text-2-2">
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">./target/debug/deps/my_lisp-8f18af13d95c8e05</span> --list
+</code></pre>
+</div>
+
+<p>
+确认测试名称和数量,为下一步过滤做准备.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org4a0a0bd" class="outline-3">
+<h3 id="org4a0a0bd"><span class="section-number-3">2.3.</span> 第 3 步:串行运行并加超时</h3>
+<div class="outline-text-3" id="text-2-3">
+<p>
+不要一上来跑全部测试.先按关键字缩小范围:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">timeout</span> 5 ./target/debug/deps/my_lisp-8f18af13d95c8e05 \
+        --test-threads=1 --nocapture test_tokenize
+</code></pre>
+</div>
+
+<p>
+关键参数:<br>
+</p>
+
+<ul class="org-ul">
+<li><code>timeout 5</code>:5 秒后强制终止,避免终端一直卡住.<br></li>
+<li><code>--test-threads=1</code>:一次只跑一个测试,保证最后打印的测试就是卡住的那个.<br></li>
+<li><code>--nocapture</code>:测试名实时输出,而不是等测试结束后才显示.<br></li>
+<li><code>test_tokenize</code>:测试名过滤,只运行名称中包含该字符串的测试.<br></li>
+</ul>
+
+<p>
+如果输出停在:<br>
+</p>
+
+<pre class="example" id="orgeb9300d">
+running 7 tests
+test tests::test_tokenize_comments ...
+</pre>
+
+<p>
+然后进程被终止,退出码为 <code>124</code>,说明:<br>
+</p>
+
+<ul class="org-ul">
+<li><code>124</code> 是 <code>timeout</code> 的退出码,表示超时<br></li>
+<li><code>test_tokenize_comment</code> 就是卡住的测试<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org85d4ebd" class="outline-3">
+<h3 id="org85d4ebd"><span class="section-number-3">2.4.</span> 第 4 步:用过滤和跳过继续缩小范围</h3>
+<div class="outline-text-3" id="text-2-4">
+<p>
+精确运行单个测试:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">timeout</span> 3 ./target/debug/deps/my_lisp-8f18af13d95c8e05 \
+        --exact tests::test_tokenize_comment
+<span style="color: #d09dc0;">echo</span> $?   <span style="color: #ef8386;"># 124 &#34920;&#31034;&#36229;&#26102;</span>
+</code></pre>
+</div>
+
+<p>
+跳过已知会卡住的测试,验证其余测试是否正常:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">timeout</span> 60 ./target/debug/deps/my_lisp-8f18af13d95c8e05 \
+        --skip test_tokenize_comment \
+        --skip test_tokenize_comments
+</code></pre>
+</div>
+
+<p>
+如果输出:<br>
+</p>
+
+<pre class="example" id="orgc78873f">
+test result: ok. 52 passed; 0 failed; 0 ignored; 2 filtered out
+</pre>
+
+<p>
+就可以确定:问题只集中在被跳过的测试,而不是整个测试环境或 Cargo 配置.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org729416a" class="outline-3">
+<h3 id="org729416a"><span class="section-number-3">2.5.</span> 第 5 步:判断是忙等还是等待</h3>
+<div class="outline-text-3" id="text-2-5">
+<p>
+在后台启动会卡住的测试:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">./target/debug/deps/my_lisp-8f18af13d95c8e05</span> \
+    --exact tests::test_tokenize_comment &amp;
+
+<span style="color: #4ae2f0;">pid</span>=$!
+</code></pre>
+</div>
+
+<p>
+观察线程 CPU:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">top</span> -H -p <span style="color: #2fafff;">"</span><span style="color: #ffffff;">$</span><span style="color: #76afbf;">pid</span><span style="color: #2fafff;">"</span>
+</code></pre>
+</div>
+
+<p>
+或者:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">ps</span> -L -o pid,tid,pcpu,stat,comm -p <span style="color: #2fafff;">"</span><span style="color: #ffffff;">$</span><span style="color: #76afbf;">pid</span><span style="color: #2fafff;">"</span>
+</code></pre>
+</div>
+
+<p>
+判断方法:<br>
+</p>
+
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">现象</th>
+<th scope="col" class="org-left">更可能的原因</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">某线程接近 100% CPU,状态 R</td>
+<td class="org-left">用户态死循环 / 忙等</td>
+</tr>
+
+<tr>
+<td class="org-left">所有线程接近 0% CPU</td>
+<td class="org-left">死锁,锁等待,IO 阻塞</td>
+</tr>
+
+<tr>
+<td class="org-left">线程状态 S/D,系统调用不返回</td>
+<td class="org-left">等待 IO,网络,子进程等</td>
+</tr>
+
+<tr>
+<td class="org-left">进程存在但完全没有输出</td>
+<td class="org-left">也可能是测试根本没启动</td>
+</tr>
+</tbody>
+</table>
+
+<p>
+本案例中,测试线程持续占用 CPU,因此优先怀疑死循环.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org46c79ef" class="outline-3">
+<h3 id="org46c79ef"><span class="section-number-3">2.6.</span> 第 6 步:用 gdb 抓调用栈</h3>
+<div class="outline-text-3" id="text-2-6">
+<p>
+这是定位卡死最直接的方法.让测试跑几秒,然后用 <code>SIGINT</code> 中断并打印所有线程栈:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">timeout</span> -s INT 5 gdb -q -batch \
+        -ex <span style="color: #2fafff;">'set pagination off'</span> \
+        -ex <span style="color: #2fafff;">'run --exact tests::test_tokenize_comment'</span> \
+        -ex <span style="color: #2fafff;">'thread apply all bt'</span> \
+        --args ./target/debug/deps/my_lisp-8f18af13d95c8e05
+</code></pre>
+</div>
+
+<p>
+参数说明:<br>
+</p>
+
+<ul class="org-ul">
+<li><code>timeout -s INT 5</code>:5 秒后发送 <code>SIGINT</code>,相当于在 gdb 里按 <code>Ctrl-C</code><br></li>
+<li><code>run --exact ...</code>:在 gdb 中启动测试<br></li>
+<li><code>thread apply all bt</code>:打印所有线程的 backtrace<br></li>
+<li><code>--args</code>:后面的内容作为被调试程序的参数<br></li>
+</ul>
+
+<p>
+本案例实际抓到的关键栈:<br>
+</p>
+
+<pre class="example" id="orgbc0e8ad">
+Thread 2 ...
+#2  Peekable&lt;CharIndices&gt;::peek
+#3  my_lisp::lexer::tokenize at src/lexer.rs:26
+#4  my_lisp::tests::test_tokenize_comment at src/lib.rs:746
+</pre>
+
+<p>
+从栈可以直接读出:<br>
+</p>
+
+<ul class="org-ul">
+<li>测试函数是 <code>test_tokenize_comment</code><br></li>
+<li>它调用了 <code>my_lisp::lexer::tokenize</code><br></li>
+<li>卡住的位置是 <code>src/lexer.rs:26</code><br></li>
+<li>对应源码是 <code>chars.peek()</code><br></li>
+</ul>
+
+<p>
+如果 gdb 停在别的线程,可以先查看线程列表:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-text"><code>(gdb) info threads
+(gdb) thread 2
+(gdb) bt
+(gdb) frame 3
+(gdb) info locals
+(gdb) list
+</code></pre>
+</div>
+
+<p>
+其中:<br>
+</p>
+
+<ul class="org-ul">
+<li><code>info threads</code>:查看所有线程<br></li>
+<li><code>thread N</code>:切换到可疑线程<br></li>
+<li><code>bt</code>:查看当前线程调用栈<br></li>
+<li><code>frame N</code>:切换到某个栈帧<br></li>
+<li><code>info locals</code>:查看局部变量<br></li>
+<li><code>list</code>:显示当前源码上下文<br></li>
+</ul>
+
+<p>
+注意:应使用带调试信息的 dev 构建,不要用 <code>--release</code>,否则行号和局部变量可能不可用.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-orgcb59132" class="outline-3">
+<h3 id="orgcb59132"><span class="section-number-3">2.7.</span> 第 7 步:gdb 不可用时的替代工具</h3>
+<div class="outline-text-3" id="text-2-7">
+</div>
+<div id="outline-container-orga390da9" class="outline-4">
+<h4 id="orga390da9"><span class="section-number-4">2.7.1.</span> perf:找热点函数</h4>
+<div class="outline-text-4" id="text-2-7-1">
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">perf</span> top -p <span style="color: #2fafff;">"</span><span style="color: #ffffff;">$</span><span style="color: #76afbf;">pid</span><span style="color: #2fafff;">"</span>
+</code></pre>
+</div>
+
+<p>
+如果死循环在用户态,通常会看到某个函数长期排在热点第一位,例如:<br>
+</p>
+
+<pre class="example" id="org12588ac">
+my_lisp::lexer::tokenize
+</pre>
+
+<p>
+也可以采样后生成报告:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">perf</span> record -g -p <span style="color: #2fafff;">"</span><span style="color: #ffffff;">$</span><span style="color: #76afbf;">pid</span><span style="color: #2fafff;">"</span> -- sleep 3
+<span style="color: #d09dc0;">perf</span> report
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgdb8f65e" class="outline-4">
+<h4 id="orgdb8f65e"><span class="section-number-4">2.7.2.</span> strace:判断是否在等待系统调用</h4>
+<div class="outline-text-4" id="text-2-7-2">
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">strace</span> -p <span style="color: #2fafff;">"</span><span style="color: #ffffff;">$</span><span style="color: #76afbf;">pid</span><span style="color: #2fafff;">"</span>
+</code></pre>
+</div>
+
+<p>
+判断方法:<br>
+</p>
+
+<ul class="org-ul">
+<li>几乎没有系统调用输出,CPU 又很高:用户态死循环<br></li>
+<li>反复输出同一类系统调用:可能在重试或忙等 IO<br></li>
+<li>停在 <code>futex</code>, <code>read</code>, <code>poll</code>, <code>connect</code> 等调用:可能在等待锁或 IO<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgc8f86f2" class="outline-4">
+<h4 id="orgc8f86f2"><span class="section-number-4">2.7.3.</span> 临时日志:确认循环是否在重复</h4>
+<div class="outline-text-4" id="text-2-7-3">
+<p>
+如果无法使用调试器,可以在可疑循环里临时加入日志:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #feacd0;">eprintln</span>!(<span style="color: #2fafff;">"loop: peek={:?}"</span>, chars.peek());
+</code></pre>
+</div>
+
+<p>
+如果日志以相同内容无限重复,就可以确认死循环.<br>
+</p>
+
+<p>
+注意:临时日志只用于定位,定位后应删除,不要留在正式代码里.<br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-org8c0b402" class="outline-3">
+<h3 id="org8c0b402"><span class="section-number-3">2.8.</span> 第 8 步:回到源码,检查循环的退出条件和进展</h3>
+<div class="outline-text-3" id="text-2-8">
+<p>
+拿到源码行号后,不要只看那一行,要检查整个循环:<br>
+</p>
+
+<ul class="org-ul">
+<li>循环有哪些退出路径?<br></li>
+<li>每个退出条件是否覆盖所有边界情况?<br></li>
+<li>每一轮循环是否让状态向退出条件前进?<br></li>
+<li>输入耗尽(EOF)时会发生什么?<br></li>
+<li>空输入,无换行,未闭合括号,未闭合字符串分别会怎样?<br></li>
+</ul>
+
+<p>
+本案例中的问题代码位于 <code>src/lexer.rs:25-32</code>:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #2fafff;">';'</span> =&gt; <span style="color: #79a8ff;">loop</span> {
+    <span style="color: #79a8ff;">if</span> <span style="color: #79a8ff;">let</span> <span style="color: #11c777;">Some</span>((_, <span style="color: #4ae2f0;">c</span>)) = chars.peek() {
+        <span style="color: #79a8ff;">if</span> *c == <span style="color: #2fafff;">'\n'</span> {
+            <span style="color: #79a8ff;">break</span>;
+        }
+        chars.next();
+    }
+},
+</code></pre>
+</div>
+
+<p>
+逐步分析:<br>
+</p>
+
+<ol class="org-ol">
+<li>读到分号 <code>;</code> 后进入 <code>loop</code>.<br></li>
+<li>只要 <code>chars.peek()</code> 返回 <code>Some</code>,就继续跳过注释字符.<br></li>
+<li>遇到换行符时 <code>break</code>.<br></li>
+<li>如果注释一直持续到输入末尾,=chars.peek()= 返回 <code>None</code>.<br></li>
+<li><code>if let Some(...)</code> 匹配失败,循环体什么都不做.<br></li>
+<li>没有 <code>break</code>,也没有推进迭代器.<br></li>
+<li>下一轮 <code>peek()</code> 仍然返回 <code>None</code>.<br></li>
+<li>永远重复,形成死循环.<br></li>
+</ol>
+
+<p>
+对应的两个测试输入都没有末尾换行:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-rust"><code>tokenize(<span style="color: #2fafff;">"(+ 1 2) ; this is the comment"</span>)
+tokenize(<span style="color: #2fafff;">"(+ 1 2) ; This is a comment"</span>)
+</code></pre>
+</div>
+
+<p>
+如果注释后面有换行,循环会正常退出:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-rust"><code>tokenize(<span style="color: #2fafff;">"(+ 1 2) ; this is the comment</span><span style="color: #f78fe7;">\n</span><span style="color: #2fafff;">"</span>)
+</code></pre>
+</div>
+
+<p>
+因此可以确认:问题不是解析器,不是环境查找,不是测试框架,而是 <b>lexer 的注释分支没有处理 EOF</b>.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org535474b" class="outline-3">
+<h3 id="org535474b"><span class="section-number-3">2.9.</span> 第 9 步:用最小输入验证根因</h3>
+<div class="outline-text-3" id="text-2-9">
+<p>
+写一个最小复现,分别测试“有换行”和“无换行”:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-rust"><code>tokenize(<span style="color: #2fafff;">"; comment</span><span style="color: #f78fe7;">\n</span><span style="color: #2fafff;">"</span>) <span style="color: #ef8386;">// &#27491;&#24120;&#32467;&#26463;</span>
+tokenize(<span style="color: #2fafff;">"; comment"</span>)   <span style="color: #ef8386;">// &#21345;&#27515;</span>
+</code></pre>
+</div>
+
+<p>
+如果结果与预期一致,就完成了根因验证.<br>
+</p>
+
+<p>
+也可以检查其他边界输入:<br>
+</p>
+
+<ul class="org-ul">
+<li>空字符串<br></li>
+<li>只有空白字符<br></li>
+<li>注释在开头<br></li>
+<li>注释在中间<br></li>
+<li>注释在末尾且无换行<br></li>
+<li>未闭合的括号<br></li>
+<li>未闭合的字符串<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgbbae7a7" class="outline-3">
+<h3 id="orgbbae7a7"><span class="section-number-3">2.10.</span> 第 10 步:修复并回归</h3>
+<div class="outline-text-3" id="text-2-10">
+<p>
+修复时应该修根因,而不是修改测试输入绕过问题.<br>
+</p>
+
+<p>
+一种写法是使用 <code>while let</code>,让 EOF 自然结束循环:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #2fafff;">';'</span> =&gt; {
+    <span style="color: #79a8ff;">while</span> <span style="color: #79a8ff;">let</span> <span style="color: #11c777;">Some</span>((_, <span style="color: #4ae2f0;">c</span>)) = chars.peek() {
+        <span style="color: #79a8ff;">if</span> *c == <span style="color: #2fafff;">'\n'</span> {
+            <span style="color: #79a8ff;">break</span>;
+        }
+        chars.next();
+    }
+}
+</code></pre>
+</div>
+
+<p>
+另一种写法是显式处理 <code>None</code>:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #2fafff;">';'</span> =&gt; <span style="color: #79a8ff;">loop</span> {
+    <span style="color: #79a8ff;">match</span> chars.peek() {
+        <span style="color: #11c777;">Some</span>((_, <span style="color: #2fafff;">'\n'</span>)) =&gt; <span style="color: #79a8ff;">break</span>,
+        <span style="color: #11c777;">Some</span>(_) =&gt; {
+            chars.next();
+        }
+        <span style="color: #11c777;">None</span> =&gt; <span style="color: #79a8ff;">break</span>, <span style="color: #ef8386;">// &#27880;&#37322;&#19968;&#30452;&#21040;&#25991;&#20214;&#26411;&#23614;</span>
+    }
+},
+</code></pre>
+</div>
+
+<p>
+修复后至少验证:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">cargo</span> test
+<span style="color: #d09dc0;">cargo</span> test tokenize
+</code></pre>
+</div>
+
+<p>
+并确认原来的两个测试都能正常结束,不再依赖 <code>timeout</code>.<br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-org6bec09c" class="outline-2">
+<h2 id="org6bec09c"><span class="section-number-2">3.</span> 本案例结论</h2>
+<div class="outline-text-2" id="text-3">
+<ul class="org-ul">
+<li>项目路径: <code>/home/shyweeds/Projects/lisp_rs</code><br></li>
+<li>现象: <code>cargo test</code> 不返回,进程持续占用 CPU<br></li>
+<li>卡住的测试:<br>
+<ul class="org-ul">
+<li><code>test_tokenize_comment</code><br></li>
+<li><code>test_tokenize_comments</code><br></li>
+</ul></li>
+<li>根因位置:=src/lexer.rs:25-32= 的注释处理分支<br></li>
+<li>根因:注释一直持续到文件末尾时,=chars.peek()= 返回 <code>None</code>,循环没有退出路径<br></li>
+<li>其余 52 个测试全部通过,说明问题范围仅限 lexer 注释分支<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orge46c3b9" class="outline-2">
+<h2 id="orge46c3b9"><span class="section-number-2">4.</span> 常用命令速查</h2>
+<div class="outline-text-2" id="text-4">
+</div>
+<div id="outline-container-orgda5f276" class="outline-3">
+<h3 id="orgda5f276"><span class="section-number-3">4.1.</span> 编译测试但不运行</h3>
+<div class="outline-text-3" id="text-4-1">
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">cargo</span> test x--no-run
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgce2fbce" class="outline-3">
+<h3 id="orgce2fbce"><span class="section-number-3">4.2.</span> 列出测试</h3>
+<div class="outline-text-3" id="text-4-2">
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">./target/debug/deps/my_lisp-8f18af13d95c8e05</span> --list
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgd923bc4" class="outline-3">
+<h3 id="orgd923bc4"><span class="section-number-3">4.3.</span> 串行运行并观察卡住的测试</h3>
+<div class="outline-text-3" id="text-4-3">
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">timeout</span> 5 ./target/debug/deps/my_lisp-8f18af13d95c8e05 \
+        --test-threads=1 --nocapture test_tokenize
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgcf0f399" class="outline-3">
+<h3 id="orgcf0f399"><span class="section-number-3">4.4.</span> 精确运行某个测试</h3>
+<div class="outline-text-3" id="text-4-4">
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">timeout</span> 3 ./target/debug/deps/my_lisp-8f18af13d95c8e05 \
+        --exact tests::test_tokenize_comment
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org2e45f38" class="outline-3">
+<h3 id="org2e45f38"><span class="section-number-3">4.5.</span> 跳过指定测试</h3>
+<div class="outline-text-3" id="text-4-5">
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">timeout</span> 60 ./target/debug/deps/my_lisp-8f18af13d95c8e05 \
+        --skip test_tokenize_comment \
+        --skip test_tokenize_comments
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgd0dd7a7" class="outline-3">
+<h3 id="orgd0dd7a7"><span class="section-number-3">4.6.</span> 查看线程 CPU</h3>
+<div class="outline-text-3" id="text-4-6">
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">top</span> -H -p <span style="color: #2fafff;">"</span><span style="color: #ffffff;">$</span><span style="color: #76afbf;">pid</span><span style="color: #2fafff;">"</span>
+<span style="color: #d09dc0;">ps</span> -L -o pid,tid,pcpu,stat,comm -p <span style="color: #2fafff;">"</span><span style="color: #ffffff;">$</span><span style="color: #76afbf;">pid</span><span style="color: #2fafff;">"</span>
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgbd22c6c" class="outline-3">
+<h3 id="orgbd22c6c"><span class="section-number-3">4.7.</span> gdb 抓所有线程栈</h3>
+<div class="outline-text-3" id="text-4-7">
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">timeout</span> -s INT 5 gdb -q -batch \
+        -ex <span style="color: #2fafff;">'set pagination off'</span> \
+        -ex <span style="color: #2fafff;">'run --exact tests::test_tokenize_comment'</span> \
+        -ex <span style="color: #2fafff;">'thread apply all bt'</span> \
+        --args ./target/debug/deps/my_lisp-8f18af13d95c8e05
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org70ae99d" class="outline-3">
+<h3 id="org70ae99d"><span class="section-number-3">4.8.</span> perf 找热点</h3>
+<div class="outline-text-3" id="text-4-8">
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">perf</span> top -p <span style="color: #2fafff;">"</span><span style="color: #ffffff;">$</span><span style="color: #76afbf;">pid</span><span style="color: #2fafff;">"</span>
+<span style="color: #d09dc0;">perf</span> record -g -p <span style="color: #2fafff;">"</span><span style="color: #ffffff;">$</span><span style="color: #76afbf;">pid</span><span style="color: #2fafff;">"</span> -- sleep 3
+<span style="color: #d09dc0;">perf</span> report
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgfe286c0" class="outline-3">
+<h3 id="orgfe286c0"><span class="section-number-3">4.9.</span> strace 看系统调用</h3>
+<div class="outline-text-3" id="text-4-9">
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">strace</span> -p <span style="color: #2fafff;">"</span><span style="color: #ffffff;">$</span><span style="color: #76afbf;">pid</span><span style="color: #2fafff;">"</span>
+</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org60850d6" class="outline-2">
+<h2 id="org60850d6"><span class="section-number-2">5.</span> 排查清单</h2>
+<div class="outline-text-2" id="text-5">
+<ul class="org-ul">
+<li class="off"><code>[&nbsp;]</code> 用 <code>cargo test --no-run</code> 确认能够编译<br></li>
+<li class="off"><code>[&nbsp;]</code> 记录测试二进制路径<br></li>
+<li class="off"><code>[&nbsp;]</code> 用 <code>--list</code> 查看测试名称<br></li>
+<li class="off"><code>[&nbsp;]</code> 用 <code>timeout</code> 保护每次运行<br></li>
+<li class="off"><code>[&nbsp;]</code> 用 <code>--test-threads=1 --nocapture</code> 找出最后启动的测试<br></li>
+<li class="off"><code>[&nbsp;]</code> 用 <code>--exact</code> 单独复现<br></li>
+<li class="off"><code>[&nbsp;]</code> 用 <code>--skip</code> 验证其余测试是否正常<br></li>
+<li class="off"><code>[&nbsp;]</code> 用 <code>top -H</code> / <code>ps -L</code> 判断忙等还是阻塞<br></li>
+<li class="off"><code>[&nbsp;]</code> 用 <code>gdb</code> 的 <code>thread apply all bt</code> 抓调用栈<br></li>
+<li class="off"><code>[&nbsp;]</code> 用 <code>perf</code> / <code>strace</code> 作为替代手段<br></li>
+<li class="off"><code>[&nbsp;]</code> 回到源码检查循环退出条件和 EOF 边界<br></li>
+<li class="off"><code>[&nbsp;]</code> 用最小输入验证根因<br></li>
+<li class="off"><code>[&nbsp;]</code> 修根因,不修改测试来绕过<br></li>
+<li class="off"><code>[&nbsp;]</code> 回归运行完整测试,确认不再卡死<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org876be42" class="outline-2">
+<h2 id="org876be42"><span class="section-number-2">6.</span> 经验总结</h2>
+<div class="outline-text-2" id="text-6">
+<ul class="org-ul">
+<li><b>卡死不是断言失败</b>:测试框架会一直等待未结束的测试,所以即使其他测试通过, <code>cargo test</code> 也不会返回.<br></li>
+<li><b>并行测试会掩盖卡住的测试名</b>:默认多线程运行时输出交错,应该用 <code>--test-threads=1</code>.<br></li>
+<li><b>CPU 使用率是重要线索</b>:高 CPU 优先怀疑死循环,低 CPU 优先怀疑死锁或 IO.<br></li>
+<li><b>调用栈比猜测可靠</b>:gdb 的 backtrace 可以直接给出文件,行号和函数名.<br></li>
+<li><b>每个 <code>loop</code> 都要有明确的退出路径</b>:特别是处理 EOF,空输入,错误输入时.<br></li>
+<li><b>循环必须每轮都有进展</b>:如果某一轮没有推进状态,也没有退出,就会无限循环.<br></li>
+<li><b>测试输入应覆盖边界</b>:注释在文件末尾,空输入,未闭合结构都应该有对应用例.<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

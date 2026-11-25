@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>emacs中被overwrite-mode恶心到了</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-09-13 Sun 00:10</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">emacs中被overwrite-mode恶心到了</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#org8f3a358">1. 一句话总纲</a></li>
+<li><a href="#orgbf0f427">2. 问题现象</a></li>
+<li><a href="#orga39e2af">3. 排查过程</a></li>
+<li><a href="#orgdd1911e">4. 根因</a></li>
+<li><a href="#org6593e4f">5. 解决方案</a></li>
+<li><a href="#org58d5a8d">6. 学到的知识点</a></li>
+<li><a href="#org891e2c1">7. 结果和参考资料</a></li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-org8f3a358" class="outline-2">
+<h2 id="org8f3a358"><span class="section-number-2">1.</span> 一句话总纲</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+光标停在句子中间输入文字时,新字符会吞掉光标后的字符——这是 Emacs 的<br>
+<code>overwrite-mode</code> (覆盖模式,mode-line 显示 <code>Ovwrt</code>),和 org 无关,是全局行为。<br>
+它默认就绑定在 Insert 键上(<code>&lt;insertchar&gt;</code> 和 <code>&lt;insert&gt;</code> 两个事件名),误按<br>
+Insert 就会触发。删掉这两个默认绑定即可根治。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-orgbf0f427" class="outline-2">
+<h2 id="orgbf0f427"><span class="section-number-2">2.</span> 问题现象</h2>
+<div class="outline-text-2" id="text-2">
+<ul class="org-ul">
+<li>Point 在句子中间,输入文字会 <b>覆盖</b> (吃掉)Point 后的字符,而不是插入。<br></li>
+<li>一开始误以为是 org 的"默认覆盖行为",又误以为是 <code>delete-selection-mode</code>.<br></li>
+<li>关键区分手段:看 mode-line 是否显示 <code>Ovwrt</code>.<br></li>
+</ul>
+
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">现象</th>
+<th scope="col" class="org-left">对应 mode</th>
+<th scope="col" class="org-left">触发条件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">选中文本被替换</td>
+<td class="org-left"><code>delete-selection-mode</code></td>
+<td class="org-left">存在活动选区</td>
+</tr>
+
+<tr>
+<td class="org-left">无选区也覆盖光标后字符(每按一下吃一个)</td>
+<td class="org-left"><code>overwrite-mode</code></td>
+<td class="org-left">模式开启即生效</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-orga39e2af" class="outline-2">
+<h2 id="orga39e2af"><span class="section-number-2">3.</span> 排查过程</h2>
+<div class="outline-text-2" id="text-3">
+<ol class="org-ol">
+<li>先问"org 写笔记默认覆盖" → 实际与 org 无关,是全局行为。<br></li>
+<li>查配置 <code>/.config/emacs/</code> : <code>init.el</code> / <code>early-init.el</code> / <code>modules</code> / 笔记文件里<br>
+<b>没有任何地方开启 <code>overwrite-mode</code></b>;倒是 <code>editing-config.el:41</code> 开了<br>
+<code>delete-selection-mode</code>.<br></li>
+<li><p>
+用 <code>emacs --batch -Q</code> 实测默认绑定:<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp"><code>(where-is-internal 'overwrite-mode global-map)
+<span style="color: #ef8386;">;; </span><span style="color: #ef8386;">=&gt; ([insertchar] [insert])</span>
+</code></pre>
+</div>
+<p>
+证实它 <b>默认就绑在 Insert 键上</b> (之前"默认没绑定"的推断是错的)。<br>
+</p></li>
+<li>之前还试过若干错误写法,报"不合法",详见下文"解决方案"里的坑。<br></li>
+</ol>
+</div>
+</div>
+<div id="outline-container-orgdd1911e" class="outline-2">
+<h2 id="orgdd1911e"><span class="section-number-2">4.</span> 根因</h2>
+<div class="outline-text-2" id="text-4">
+<p>
+Insert 键默认绑定 <code>overwrite-mode</code>;误按 Insert 就会 toggle <code>overwrite-mode</code>,于是输入时<br>
+光标后的字符被逐个替换。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org6593e4f" class="outline-2">
+<h2 id="org6593e4f"><span class="section-number-2">5.</span> 解决方案</h2>
+<div class="outline-text-2" id="text-5">
+<p>
+删掉 Insert 键的默认绑定(两个事件名都要删,终端/GUI 下各有报法)。<br>
+</p>
+
+<p>
+坑:新 API 和 <code>kbd</code> 都解析不了 <code>insertchar</code> / <code>insert</code> 这种函数键名。<br>
+</p>
+
+<p>
+错误写法(报 <code>key-valid-p</code> "不合法"):<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp"><code>(keymap-global-unset (kbd <span style="color: #2fafff;">"&lt;insertchar&gt;"</span>))  <span style="color: #ef8386;">; </span><span style="color: #ef8386;">kbd &#19981;&#35748; insertchar
+</span>(keymap-global-unset [insertchar])          <span style="color: #ef8386;">; </span><span style="color: #ef8386;">&#21482;&#25509;&#21463;&#23383;&#31526;&#20018;&#38190;,&#19981;&#25509;&#21521;&#37327;</span>
+</code></pre>
+</div>
+
+<p>
+老 API 写法(向量,直接调 define-key):<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-elisp"><code>(global-unset-key [insertchar])
+(global-unset-key [insert])
+</code></pre>
+</div>
+
+<p>
+新 API 写法(直接传字符串,不要包 kbd):<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-elisp"><code>(keymap-global-unset <span style="color: #2fafff;">"&lt;insertchar&gt;"</span>)
+(keymap-global-unset <span style="color: #2fafff;">"&lt;insert&gt;"</span>)
+</code></pre>
+</div>
+
+<p>
+验证:<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-sh"><code><span style="color: #d09dc0;">emacs</span> --batch -Q --eval <span style="color: #2fafff;">"(princ (where-is-internal 'overwrite-mode global-map))"</span>
+;; <span style="color: #d09dc0;">=</span>&gt; nil
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org58d5a8d" class="outline-2">
+<h2 id="org58d5a8d"><span class="section-number-2">6.</span> 学到的知识点</h2>
+<div class="outline-text-2" id="text-6">
+<ul class="org-ul">
+<li><code>overwrite-mode</code> 是 buffer-local 的 minor mode;想全局禁用可用<br>
+<code>after-change-major-mode-hook</code> 挂钩,但更彻底的是删掉触发它的键绑定。<br></li>
+<li><code>kbd</code> 能解析的函数键名有限, <code>insertchar</code> / <code>insert</code> 不在其列;而<br>
+<code>keymap-global-unset</code> 内部走的是 <code>key-parse</code>,所以 <b>直接传字符串</b> 即可,不必包 <code>kbd</code>.<br></li>
+<li><code>keymap-global-unset</code> 从 Lisp 调用时, <code>KEY</code> 必须是满足 <code>key-valid-p</code> 的字符串;<br>
+传向量要用老 API <code>global-unset-key</code>.<br></li>
+<li><code>&amp;optional</code> 表示可选参数,省略时取默认值 <code>nil</code>;它之前的参数是必需参数。<br></li>
+<li>Emacs Lisp <b>没有严格布尔类型</b>,约定"<code>nil</code> 为假、任何非 <code>nil</code> 为真";所以文档里<br>
+的 BOOL / REMOVE 都是二值语义,类型签名里显示为 <code>t</code> (任意类型)。<br></li>
+<li><code>REMOVE</code> 参数: <code>nil</code> 是 unset(把键标为未定义),非 <code>nil</code> 是 remove(彻底删除键条目).<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org891e2c1" class="outline-2">
+<h2 id="org891e2c1"><span class="section-number-2">7.</span> 结果和参考资料</h2>
+<div class="outline-text-2" id="text-7">
+<ul class="org-ul">
+<li><p>
+emacs-lisp配置片段<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp"><code><span style="color: #ef8386;">;; </span><span style="color: #ef8386;">disable overwrite-mode when enter new Major-mode
+</span><span style="color: #ef8386;">;; </span><span style="color: #ef8386;">and unbind the functions
+</span>(add-hook 'after-change-major-mode-hook
+          (<span style="color: #79a8ff;">lambda</span>()(<span style="color: #79a8ff;">when</span>(overwrite-mode)(overwrite-mode -1))))
+(keymap-global-unset <span style="color: #2fafff;">"&lt;insert&gt;"</span>)
+(keymap-global-unset <span style="color: #2fafff;">"&lt;insertchar&gt;"</span>)
+</code></pre>
+</div></li>
+<li>参考的小手册<br>
+<code>C-h f keymap-global-unset</code><br>
+原Help文档链接:<a href="help:keymap-global-unset">keymap-global-set</a><br></li>
+<li><a href="20260825141916-emacs内置help系统的合理使用.html#ID-89b03cc2-6c95-46b5-b678-a6f66f52942b">emacs内置help系统的合理使用</a><br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

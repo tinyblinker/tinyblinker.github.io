@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>写mini_cava的ui调试逻辑的部分记录_ai</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-11-25 Wed 21:35</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">写mini_cava的ui调试逻辑的部分记录_ai</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#org04872af">1. 第一部分:ring buffer「装不进数据」的假象</a>
+<ul>
+<li><a href="#org4d62b4a">1.1. 一句话结论</a></li>
+<li><a href="#orga2a1815">1.2. 现象</a></li>
+<li><a href="#orgc3f9764">1.3. 根因分析</a>
+<ul>
+<li><a href="#orgafedaac">1.3.1. 数据流的两端速率不匹配</a></li>
+<li><a href="#orgcfcda05">1.3.2. 关键证据(用数字说话)</a></li>
+<li><a href="#org04fce36">1.3.3. 为什么容易误判</a></li>
+</ul>
+</li>
+<li><a href="#org6247055">1.4. 调试心路历程(复盘)</a></li>
+<li><a href="#orgb20ff4f">1.5. 修复</a></li>
+<li><a href="#orgf20ac65">1.6. 验证(端到端)</a></li>
+<li><a href="#org44b4b3b">1.7. 经验教训(可复用)</a></li>
+<li><a href="#orgb85c7b0">1.8. 遗留建议</a></li>
+</ul>
+</li>
+<li><a href="#org209259f">2. 第二部分:用 crossterm 画 cava 式频谱条</a>
+<ul>
+<li><a href="#org12f21ac">2.1. 需求</a></li>
+<li><a href="#orgbc7fdf3">2.2. 实现方案对比</a></li>
+<li><a href="#orgbd873a4">2.3. 渲染结构</a></li>
+</ul>
+</li>
+<li><a href="#org46ac18d">3. 第三部分:频谱条为什么「又高又平」</a>
+<ul>
+<li><a href="#org41180ef">3.1. 现象</a></li>
+<li><a href="#org7f81a37">3.2. 日志数据分析(<code>my_cava.log</code>)</a></li>
+<li><a href="#org9600434">3.3. 根因(三个原因叠加)</a>
+<ul>
+<li><a href="#orgea2fc7d">3.3.1. 原因 1(主因):dB 范围假设错了</a></li>
+<li><a href="#org4b3596d">3.3.2. 原因 2(次因):平均化稀释峰值</a></li>
+<li><a href="#orge04497e">3.3.3. 原因 3(小问题):在 dB 域求平均</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#orgbad51a4">4. 第四部分:改进方案(A → E)</a>
+<ul>
+<li><a href="#org4678729">4.1. 方案 A:缩小 dB 地板(一行见效)</a></li>
+<li><a href="#org62bd08f">4.2. 方案 B:autosens(每帧归一化,cava 的灵魂)</a></li>
+<li><a href="#org6b5f23f">4.3. 方案 C:用 max 代替 avg</a></li>
+<li><a href="#org0a223f2">4.4. 方案 D:gravity 幂次曲线</a></li>
+<li><a href="#org0cc99ea">4.5. 方案 E:频率映射</a></li>
+</ul>
+</li>
+<li><a href="#org117944d">5. 第五部分:右侧柱子「几乎不显示」</a>
+<ul>
+<li><a href="#orgd9ec288">5.1. 根因</a></li>
+<li><a href="#org941e074">5.2. 修复:cava 式频率映射</a></li>
+</ul>
+</li>
+<li><a href="#org5ad8098">6. 第六部分:柱顶坠格 + 渐变配色</a>
+<ul>
+<li><a href="#org7ccf9f1">6.1. 柱顶坠格(峰值回落)</a></li>
+<li><a href="#orgfa318b1">6.2. 渐变配色</a></li>
+</ul>
+</li>
+<li><a href="#orgc6cf244">7. 第七部分:最终管线回顾</a></li>
+<li><a href="#org7ea7067">8. 第八部分:可调参数(<code>src/main.rs</code>)</a></li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-org04872af" class="outline-2">
+<h2 id="org04872af"><span class="section-number-2">1.</span> 第一部分:ring buffer「装不进数据」的假象</h2>
+<div class="outline-text-2" id="text-1">
+</div>
+<div id="outline-container-org4d62b4a" class="outline-3">
+<h3 id="org4d62b4a"><span class="section-number-3">1.1.</span> 一句话结论</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+ring buffer 本身 <b>从头到尾都没坏*。真正的问题是消费者在 *空转</b><br>
+(busy-loop 无脑 <code>pop_slice</code>),消费速度远快于生产者(音频回调)的填充速度,<br>
+所以绝大多数 <code>pop_slice</code> 都返回 0,*看起来* 就像 buffer 不工作。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-orga2a1815" class="outline-3">
+<h3 id="orga2a1815"><span class="section-number-3">1.2.</span> 现象</h3>
+<div class="outline-text-3" id="text-1-2">
+<ul class="org-ul">
+<li><p>
+控制台疯狂刷屏:<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-text"><code>Consuming fft input data too quickly!!
+poped_data_len = 0
+</code></pre>
+</div></li>
+<li>但最初几次 <code>poped_data_len = 1024</code>,之后就一直 = 0。<br></li>
+<li>于是直觉判断:「ring buffer 没有把数据传过来」。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgc3f9764" class="outline-3">
+<h3 id="orgc3f9764"><span class="section-number-3">1.3.</span> 根因分析</h3>
+<div class="outline-text-3" id="text-1-3">
+</div>
+<div id="outline-container-orgafedaac" class="outline-4">
+<h4 id="orgafedaac"><span class="section-number-4">1.3.1.</span> 数据流的两端速率不匹配</h4>
+<div class="outline-text-4" id="text-1-3-1">
+<ul class="org-ul">
+<li>生产者:CPAL 音频回调,每 ~21ms 才来一批(~2048 个采样)。<br></li>
+<li>消费者:一个 <code>loop { pop_slice; FFT }</code> 的 <b>无等待空转</b>,<br>
+每秒钟能空跑几千次。<br></li>
+<li>结果:消费者先把预填充的数据瞬间吃光,之后每次醒来看 buffer 都是<br>
+空的/不满的,于是返回 0 或部分数据。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgcfcda05" class="outline-4">
+<h4 id="orgcfcda05"><span class="section-number-4">1.3.2.</span> 关键证据(用数字说话)</h4>
+<div class="outline-text-4" id="text-1-3-2">
+<p>
+在同一台机器上跑 3 秒并统计日志:<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-text"><code>producer &#22238;&#35843;&#27425;&#25968;(pushed_slice_cnt = 2048):  138 &#27425;   &lt;- &#19968;&#30452;&#22312;&#20135;
+consumer &#25104;&#21151; pop &#28385; 1024 &#30340;&#27425;&#25968;:               280 &#27425;   &lt;- &#26377;&#25968;&#25454;&#26102;&#33021;&#21507;&#28385;
+consumer &#31354;&#36716; pop=0 &#30340;&#27425;&#25968;:                    21983 &#27425;  &lt;- &#31354;&#36716;&#25165;&#26159;&#22823;&#22836;
+</code></pre>
+</div>
+<ul class="org-ul">
+<li>138 × 2048 ≈ 282k 个采样,与 280 × 1024 ≈ 286k 基本吻合,<br>
+说明 *数据一字不差地通过了 ring buffer*。<br></li>
+<li>那 21983 次空转,才是「poped_data_len 始终 = 0」的假象来源。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org04fce36" class="outline-4">
+<h4 id="org04fce36"><span class="section-number-4">1.3.3.</span> 为什么容易误判</h4>
+<div class="outline-text-4" id="text-1-3-3">
+<ul class="org-ul">
+<li>只盯着消费者一侧的打印,没去看生产者那一侧。<br></li>
+<li>预填充的 4096 个 ~EQUILIBRIUM~(静音)数据,让程序「前几次能吃到<br>
+1024、之后就 0」,这个「先有后无」的现象极具迷惑性。<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-org6247055" class="outline-3">
+<h3 id="org6247055"><span class="section-number-3">1.4.</span> 调试心路历程(复盘)</h3>
+<div class="outline-text-3" id="text-1-4">
+<ol class="org-ol">
+<li><b>先别急着改代码,先分清「谁没工作」。</b><br>
+ring buffer 是 SPSC 的两端,必须 <b>分别</b> 验证生产端和消费端:<br>
+<ul class="org-ul">
+<li>生产端:给回调加计数,看它到底有没有被调用、每次 push 多少。<br>
+结果:138 次、每次完整 push 2048,生产端完全正常。<br></li>
+<li>消费端:统计 pop 返回值分布。<br>
+结果:有数据时能 pop 满,但空转次数是有效次数的 ~78 倍。<br></li>
+</ul></li>
+<li><b>把「症状」翻译成「速率不匹配」。</b><br>
+<ul class="org-ul">
+<li>「pop 返回 0」≠「没数据」,也可能是「我来早了 / 我吃太快了」。<br></li>
+</ul></li>
+<li><b>对照上游 CPAL 的 fft 例子。</b><br>
+<ul class="org-ul">
+<li>老版本 cpal 的 <code>examples/fft.rs</code> 用的是「先 <code>consumer.len()</code> 判断,<br>
+不够就 continue 等」的写法;正是缺了这一步「等」。<br></li>
+</ul></li>
+<li><b>注意 ringbuf 版本 API 差异。</b><br>
+<ul class="org-ul">
+<li><code>consumer.len()</code> 在 ringbuf 0.5 里变成了 <code>consumer.occupied_len()</code>,<br>
+<code>HeapRb::new().split()</code> 拆出 producer/consumer 是对的,但需要把<br>
+<code>Observer</code> 也引入作用域才能调 ~occupied_len()~。<br></li>
+</ul></li>
+</ol>
+</div>
+</div>
+<div id="outline-container-orgb20ff4f" class="outline-3">
+<h3 id="orgb20ff4f"><span class="section-number-3">1.5.</span> 修复</h3>
+<div class="outline-text-3" id="text-1-5">
+<p>
+消费者改成「先等够 FFT_SIZE 个采样,再一次性吃满」:<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">while</span> consumer.occupied_len() &lt; <span style="color: #11c777;">FFT_SIZE</span> {
+    <span style="color: #b6a0ff;">std</span>::<span style="color: #b6a0ff;">thread</span>::sleep(<span style="color: #b6a0ff;">std</span>::<span style="color: #b6a0ff;">time</span>::<span style="color: #11c777;">Duration</span>::from_millis(<span style="color: #ffffff;">1</span>));
+}
+<span style="color: #79a8ff;">let</span> <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">window</span> = [<span style="color: #11c777;">T</span>::<span style="color: #11c777;">EQUILIBRIUM</span>; <span style="color: #11c777;">FFT_SIZE</span>];
+consumer.pop_slice(&amp;<span style="color: #79a8ff;">mut</span> window);
+</code></pre>
+</div>
+<ul class="org-ul">
+<li>去掉了导致误解的预填充。<br></li>
+<li>去掉了刷屏的 per-callback <code>println!</code>,峰值信息每 50 帧打印一次。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgf20ac65" class="outline-3">
+<h3 id="orgf20ac65"><span class="section-number-3">1.6.</span> 验证(端到端)</h3>
+<div class="outline-text-3" id="text-1-6">
+<p>
+用一个 1000 Hz 的正弦波打到 <code>default_sink</code>,看 FFT 能否抓到:<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-sh"><code><span style="color: #d09dc0;">ffmpeg</span> -f lavfi -i <span style="color: #2fafff;">"sine=frequency=1000:sample_rate=48000:duration=8"</span> \
+       -ac 2 -ar 48000 tone.wav
+<span style="color: #d09dc0;">pw-play</span> tone.wav
+</code></pre>
+</div>
+<p>
+峰值稳定出现在预期 bin,说明真实音频数据已经<br>
+<b>从设备 → 回调 → ring buffer → 消费者 → FFT</b> 全链路跑通。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org44b4b3b" class="outline-3">
+<h3 id="org44b4b3b"><span class="section-number-3">1.7.</span> 经验教训(可复用)</h3>
+<div class="outline-text-3" id="text-1-7">
+<ol class="org-ol">
+<li>调 SPSC/队列问题时,*一定要分别给生产端和消费端加计数*,<br>
+用「总产量 ≈ 总消费量」来判断到底哪一端有问题。<br></li>
+<li>「返回 0」要多问一句:是「真没数据」,还是「消费者太快 / 生产者太慢」。<br></li>
+<li>消费者不要在热循环里无脑 <code>pop</code>;要么阻塞/休眠等待,<br>
+要么用「攒够一批再处理」的批量策略。<br></li>
+<li>参考上游例子时,先核对依赖版本,API 可能已经改名<br>
+(<code>len</code> → <code>occupied_len</code>,~push~ → <code>try_push/push_slice</code> 等)。<br></li>
+<li>用真实信号(正弦波)做端到端验证,比「看打印」更有说服力。<br></li>
+</ol>
+</div>
+</div>
+<div id="outline-container-orgb85c7b0" class="outline-3">
+<h3 id="orgb85c7b0"><span class="section-number-3">1.8.</span> 遗留建议</h3>
+<div class="outline-text-3" id="text-1-8">
+<ul class="org-ul">
+<li>输入是 2 声道交错(L,R,L,R…),直接塞进 FFT 会把 L/R 混在一起,<br>
+峰值频点会偏移。做频谱可视化前建议先「降混成单声道」(取 (L+R)/2)再 FFT。<br></li>
+<li>1ms 的 sleep 对可视化足够,追求更低延迟可换成 <code>condvar</code> 或定时器驱动。<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-org209259f" class="outline-2">
+<h2 id="org209259f"><span class="section-number-2">2.</span> 第二部分:用 crossterm 画 cava 式频谱条</h2>
+<div class="outline-text-2" id="text-2">
+</div>
+<div id="outline-container-org12f21ac" class="outline-3">
+<h3 id="org12f21ac"><span class="section-number-3">2.1.</span> 需求</h3>
+<div class="outline-text-3" id="text-2-1">
+<p>
+基于一个不断变化的 ~Vec&lt;f32&gt;~(FFT 半频谱)画出类似 cava 的频谱条。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-orgbc7fdf3" class="outline-3">
+<h3 id="orgbc7fdf3"><span class="section-number-3">2.2.</span> 实现方案对比</h3>
+<div class="outline-text-3" id="text-2-2">
+<ol class="org-ol">
+<li>*整帧字符串*(最简):把整帧拼成一个 <code>String</code>,~MoveTo(0,0)~ 一次打印,<br>
+几乎无闪烁。<br></li>
+<li>*逐列 diff 渲染*(最终采用):维护上一帧的缓存,只重绘变化的格子,<br>
+用绝对光标定位,避免 raw mode 下 <code>OPOST</code> 关闭导致的错位。<br></li>
+</ol>
+</div>
+</div>
+<div id="outline-container-orgbd873a4" class="outline-3">
+<h3 id="orgbd873a4"><span class="section-number-3">2.3.</span> 渲染结构</h3>
+<div class="outline-text-3" id="text-2-3">
+<ul class="org-ul">
+<li>每根柱子 3 列宽 + 1 列空隙。<br></li>
+<li>柱子用 8 级填充字符(▁▂▃▄▅▆▇█)表示 1/8 格精度。<br></li>
+<li>懒渲染:仅字符/颜色与上一帧不同的格子才重绘。<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-org46ac18d" class="outline-2">
+<h2 id="org46ac18d"><span class="section-number-2">3.</span> 第三部分:频谱条为什么「又高又平」</h2>
+<div class="outline-text-2" id="text-3">
+</div>
+<div id="outline-container-org41180ef" class="outline-3">
+<h3 id="org41180ef"><span class="section-number-3">3.1.</span> 现象</h3>
+<div class="outline-text-3" id="text-3-1">
+<p>
+柱子几乎不动、看起来都差不多高,没有 cava 那种高低错落、会跳舞的感觉。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org7f81a37" class="outline-3">
+<h3 id="org7f81a37"><span class="section-number-3">3.2.</span> 日志数据分析(<code>my_cava.log</code>)</h3>
+<div class="outline-text-3" id="text-3-2">
+<ul class="org-ul">
+<li>变量:~normed_half_db_data~,512 个 dB 值,共 221 帧(约 4 秒)。<br></li>
+<li>前 ~50 帧全是 -240(纯静音),之后才有真实音频。<br></li>
+<li>有声音后:最响 bin 约 <b>-9~-18 dB</b>,中位数约 <b>-57 dB</b>,均值约 *-92 dB*。<br></li>
+<li>关键结论:真实音乐只在约 <b>[-60, -10] dB</b> 这 50 dB 内波动,<br>
+-240 这个地板只有真空隙的高频 bin 才会触达。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org9600434" class="outline-3">
+<h3 id="org9600434"><span class="section-number-3">3.3.</span> 根因(三个原因叠加)</h3>
+<div class="outline-text-3" id="text-3-3">
+</div>
+<div id="outline-container-orgea2fc7d" class="outline-4">
+<h4 id="orgea2fc7d"><span class="section-number-4">3.3.1.</span> 原因 1(主因):dB 范围假设错了</h4>
+<div class="outline-text-4" id="text-3-3-1">
+<p>
+原映射 <code>mapped = (avg + 240) / 240</code>,把 [-240, 0] dB 线性摊到 [0,1]。<br>
+但音频永远到不了 -240 dB,真实动态范围只有 ~50 dB,于是:<br>
+</p>
+<ul class="org-ul">
+<li>-15 dB → 0.94,-40 dB → 0.83,-70 dB → 0.71。<br></li>
+<li><b>所有有声音的柱子全被挤在 71%~95% 高度</b>,看着又高又平。<br></li>
+<li>好比拿一把 2.4 米长的尺子去量一个 50 厘米的东西,全集中在尺子顶端。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org4b3596d" class="outline-4">
+<h4 id="org4b3596d"><span class="section-number-4">3.3.2.</span> 原因 2(次因):平均化稀释峰值</h4>
+<div class="outline-text-4" id="text-3-3-2">
+<p>
+极端弯曲的对数映射让第 0 根柱覆盖 62 个 bin,一平均就把 -13 dB 的尖峰拉到 -38 dB。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-orge04497e" class="outline-4">
+<h4 id="orge04497e"><span class="section-number-4">3.3.3.</span> 原因 3(小问题):在 dB 域求平均</h4>
+<div class="outline-text-4" id="text-3-3-3">
+<p>
+dB 是凹函数,平均(dB) ≠ dB(平均幅度),会系统性偏向小声的 bin。<br>
+</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orgbad51a4" class="outline-2">
+<h2 id="orgbad51a4"><span class="section-number-2">4.</span> 第四部分:改进方案(A → E)</h2>
+<div class="outline-text-2" id="text-4">
+</div>
+<div id="outline-container-org4678729" class="outline-3">
+<h3 id="org4678729"><span class="section-number-3">4.1.</span> 方案 A:缩小 dB 地板(一行见效)</h3>
+<div class="outline-text-3" id="text-4-1">
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">const</span> <span style="color: #11c777;">DB_FLOOR</span>: <span style="color: #11c777;">f32</span> = -<span style="color: #ffffff;">60.0</span>;
+<span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">mapped</span> = ((avg - <span style="color: #11c777;">DB_FLOOR</span>) / (-<span style="color: #11c777;">DB_FLOOR</span>)).clamp(<span style="color: #ffffff;">0.0</span>, <span style="color: #ffffff;">1.0</span>);
+</code></pre>
+</div>
+<p>
+-15 dB → 0.75,-40 dB → 0.33,-70 dB → 0,动态范围立刻拉开。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org62bd08f" class="outline-3">
+<h3 id="org62bd08f"><span class="section-number-3">4.2.</span> 方案 B:autosens(每帧归一化,cava 的灵魂)</h3>
+<div class="outline-text-3" id="text-4-2">
+<p>
+cava 不平缓的核心在于它 *每帧自动调增益,让最高柱子刚好顶到屏幕顶端*。<br>
+</p>
+<ul class="org-ul">
+<li>第一遍算出所有柱子的原始强度,找出本帧最大值。<br></li>
+<li>峰值超了就快速降增益,不足就缓慢升增益(滚动最大值,避免抖动)。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org6b5f23f" class="outline-3">
+<h3 id="org6b5f23f"><span class="section-number-3">4.3.</span> 方案 C:用 max 代替 avg</h3>
+<div class="outline-text-3" id="text-4-3">
+<p>
+区间取最大幅值,尖峰不被稀释,柱子弹跳更明显。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org0a223f2" class="outline-3">
+<h3 id="org0a223f2"><span class="section-number-3">4.4.</span> 方案 D:gravity 幂次曲线</h3>
+<div class="outline-text-3" id="text-4-4">
+<p>
+<code>mapped.powf(GRAVITY)</code>,GRAVITY &gt; 1 让小声柱子相对更矮,高低差更明显。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org0cc99ea" class="outline-3">
+<h3 id="org0cc99ea"><span class="section-number-3">4.5.</span> 方案 E:频率映射</h3>
+<div class="outline-text-3" id="text-4-5">
+<p>
+把 <code>LOG_BASE</code> 指数映射换成按实际频率的对数分布(见下一节)。<br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-org117944d" class="outline-2">
+<h2 id="org117944d"><span class="section-number-2">5.</span> 第五部分:右侧柱子「几乎不显示」</h2>
+<div class="outline-text-2" id="text-5">
+</div>
+<div id="outline-container-orgd9ec288" class="outline-3">
+<h3 id="orgd9ec288"><span class="section-number-3">5.1.</span> 根因</h3>
+<div class="outline-text-3" id="text-5-1">
+<p>
+把 <code>LOG_BASE</code> 改成 10.0 后,旧映射 <code>(10^t - 1) / 9</code> 变成 <b>凸</b> 曲线,<br>
+大部分柱子被推到 5.7k~24kHz(奈奎斯特)这一段。而真实音频能量集中在低频,<br>
+10k~24kHz 基本是 FFT 噪声(日志里就是 -240 dB),所以右侧永远空着。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org941e074" class="outline-3">
+<h3 id="org941e074"><span class="section-number-3">5.2.</span> 修复:cava 式频率映射</h3>
+<div class="outline-text-3" id="text-5-2">
+<p>
+放弃 <code>log_bin_index</code>,改成按实际频率对数分布,柱子覆盖 <b>40Hz ~ 10kHz</b><br>
+(cava 默认 <code>lower_cutoff_freq=50</code> / <code>higher_cutoff_freq=10000</code>):<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">bar_to_bin</span>(<span style="color: #4ae2f0;">s</span>: <span style="color: #11c777;">usize</span>, <span style="color: #4ae2f0;">bars</span>: <span style="color: #11c777;">usize</span>, <span style="color: #4ae2f0;">freq_atom</span>: <span style="color: #11c777;">f32</span>) -&gt; <span style="color: #11c777;">usize</span> {
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">t</span> = s <span style="color: #79a8ff;">as</span> <span style="color: #11c777;">f32</span> / bars <span style="color: #79a8ff;">as</span> <span style="color: #11c777;">f32</span>;
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">freq</span> = <span style="color: #11c777;">LOWER_CUTOFF_FREQ</span> * (<span style="color: #11c777;">HIGHER_CUTOFF_FREQ</span> / <span style="color: #11c777;">LOWER_CUTOFF_FREQ</span>).powf(t);
+    (freq / freq_atom) <span style="color: #79a8ff;">as</span> <span style="color: #11c777;">usize</span>
+}
+</code></pre>
+</div>
+<p>
+这样右侧柱子对应 5k~10kHz(镲片、齿音等真实内容),就能显示了。<br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-org5ad8098" class="outline-2">
+<h2 id="org5ad8098"><span class="section-number-2">6.</span> 第六部分:柱顶坠格 + 渐变配色</h2>
+<div class="outline-text-2" id="text-6">
+</div>
+<div id="outline-container-org7ccf9f1" class="outline-3">
+<h3 id="org7ccf9f1"><span class="section-number-3">6.1.</span> 柱顶坠格(峰值回落)</h3>
+<div class="outline-text-3" id="text-6-1">
+<ul class="org-ul">
+<li>每根柱顶加 <code>CAP_SIZE</code> 个全字符块。<br></li>
+<li>柱子涨时坠格跟上去,柱子跌时坠格 <b>更慢地</b> 下落(<code>CAP_GRAVITY</code> 0.15 格/帧,<br>
+远小于柱子的下降速度),形成「漂浮的峰值残影」。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgfa318b1" class="outline-3">
+<h3 id="orgfa318b1"><span class="section-number-3">6.2.</span> 渐变配色</h3>
+<div class="outline-text-3" id="text-6-2">
+<ul class="org-ul">
+<li>垂直渐变:绿 → 黄 → 红(底部 → 顶部)。<br></li>
+<li>初版按 <b>屏幕绝对高度</b> 归一化,矮柱子只能看到绿色段;<br>
+后改为按 <b>柱子自身平滑后的高度</b> 归一化,每根柱子都能跑满整段渐变,<br>
+柱高每帧变化时整段渐变随之伸缩。<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-orgc6cf244" class="outline-2">
+<h2 id="orgc6cf244"><span class="section-number-2">7.</span> 第七部分:最终管线回顾</h2>
+<div class="outline-text-2" id="text-7">
+<ol class="org-ol">
+<li><code>cpal</code> 从 PipeWire <code>default_sink</code> monitor 采集音频。<br></li>
+<li><code>ringbuf</code> 传递 PCM 数据(生产端:音频回调;消费端:FFT)。<br></li>
+<li><code>rustfft</code> 做 1024 点 FFT,先降混(2 声道取 (L+R)/2)、再加汉宁窗。<br></li>
+<li>幅度 → dB:=20 * log10(norm / window_sum)=。<br></li>
+<li>频率映射(40Hz~10kHz)→ 区间取最大 → dB 映射(-60 floor)→ gravity。<br></li>
+<li>autosens 归一化 → attack/decay 平滑 → 柱高 + 坠格 → 渐变着色 → crossterm 绘制。<br></li>
+</ol>
+</div>
+</div>
+<div id="outline-container-org7ea7067" class="outline-2">
+<h2 id="org7ea7067"><span class="section-number-2">8.</span> 第八部分:可调参数(<code>src/main.rs</code>)</h2>
+<div class="outline-text-2" id="text-8">
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-right">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">Constant</th>
+<th scope="col" class="org-right">Default</th>
+<th scope="col" class="org-left">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left"><code>FFT_SIZE</code></td>
+<td class="org-right">1024</td>
+<td class="org-left">FFT window size</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>DB_FLOOR</code></td>
+<td class="org-right">-60.0</td>
+<td class="org-left">dB floor for the height mapping</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>GRAVITY</code></td>
+<td class="org-right">1.5</td>
+<td class="org-left">power curve (&gt;1 droops quiet bars)</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>ATTACK</code> / <code>DECAY</code></td>
+<td class="org-right">0.4 / 0.05</td>
+<td class="org-left">bar rise / fall speed</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>LOWER_CUTOFF_FREQ</code></td>
+<td class="org-right">40.0</td>
+<td class="org-left">lowest bar frequency (Hz)</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>HIGHER_CUTOFF_FREQ</code></td>
+<td class="org-right">10000.0</td>
+<td class="org-left">highest bar frequency (Hz)</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>AUTOSENS_RISE</code></td>
+<td class="org-right">0.05</td>
+<td class="org-left">autosens gain rise speed</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>SENSITIVITY_MAX</code></td>
+<td class="org-right">50.0</td>
+<td class="org-left">autosens gain cap</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>CAP_SIZE</code></td>
+<td class="org-right">2</td>
+<td class="org-left">number of falling peak cells</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>CAP_GRAVITY</code></td>
+<td class="org-right">0.15</td>
+<td class="org-left">peak-cell fall speed (cells/frame)</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>BAR_WIDTH</code></td>
+<td class="org-right">3</td>
+<td class="org-left">bar width in columns</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>BAR_SPACING</code></td>
+<td class="org-right">1</td>
+<td class="org-left">gap between bars in columns</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>GRADIENT</code></td>
+<td class="org-right">green -&gt; yellow -&gt; red</td>
+<td class="org-left">vertical color stops</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

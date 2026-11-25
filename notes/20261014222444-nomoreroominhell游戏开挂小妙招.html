@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NoMoreRoomInHell游戏开挂小妙招</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-10-14 Wed 22:25</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">NoMoreRoomInHell游戏开挂小妙招</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#orgc0cff53">1. 使用说明</a>
+<ul>
+<li><a href="#org76885e0">1.1. 开启开发者控制台</a></li>
+<li><a href="#org68f4ed0">1.2. 权限与注意事项</a></li>
+</ul>
+</li>
+<li><a href="#orgbb91b5e">2. 作弊,移动与 AI</a>
+<ul>
+<li><a href="#orgbab0a75">2.1. 开启无敌模式</a></li>
+<li><a href="#org1314ad6">2.2. 飞行和穿墙</a></li>
+</ul>
+</li>
+<li><a href="#org24b3bf4">3. 僵尸行动控制</a>
+<ul>
+<li><a href="#org481f187">3.1. 冻结当前僵尸</a></li>
+<li><a href="#orgd7aac7a">3.2. 限制僵尸攻击距离</a></li>
+<li><a href="#org9187a83">3.3. 尝试让新生成的僵尸远离玩家</a></li>
+</ul>
+</li>
+<li><a href="#orgb362169">4. 复活与队友附近复活</a>
+<ul>
+<li><a href="#orgd315c98">4.1. 允许阵亡玩家复活</a></li>
+<li><a href="#orgdcd4ba9">4.2. 允许不消耗复活代币(可选)</a></li>
+<li><a href="#orgfc9c02d">4.3. 触发阵亡玩家复活</a></li>
+<li><a href="#org546aac5">4.4. 设置复活时携带武器(可选)</a></li>
+<li><a href="#org2a1de42">4.5. 附近复活完整示例</a></li>
+</ul>
+</li>
+<li><a href="#orgb3e0183">5. 发放武器,弹药与物品</a>
+<ul>
+<li><a href="#org092533c">5.1. 常用指令</a></li>
+<li><a href="#org1a429a3">5.2. 枪支示例</a></li>
+<li><a href="#org65214ef">5.3. 药品和医疗用品示例</a></li>
+<li><a href="#org089fe60">5.4. 其他物品示例</a></li>
+</ul>
+</li>
+<li><a href="#orgb99f62f">6. 感染,僵尸和服务器参数</a></li>
+<li><a href="#orgf079e93">7. 地图与服务器管理</a>
+<ul>
+<li><a href="#org01def08">7.1. 查看服务器状态</a></li>
+<li><a href="#orgfaada12">7.2. 切换地图</a></li>
+</ul>
+</li>
+<li><a href="#org5672908">8. 查询指令与排错</a></li>
+<li><a href="#org8d26fad">9. 常用操作速查</a>
+<ul>
+<li><a href="#org6114427">9.1. 无敌</a></li>
+<li><a href="#org90a3920">9.2. 冻结僵尸</a></li>
+<li><a href="#orgab9684b">9.3. 恢复僵尸行动</a></li>
+<li><a href="#org432f770">9.4. 给自己枪和弹药</a></li>
+<li><a href="#org5f30ab5">9.5. 给自己医疗用品</a></li>
+<li><a href="#orge3ba89c">9.6. 允许队友在附近复活</a></li>
+<li><a href="#org08c3f59">9.7. 关闭作弊</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-orgc0cff53" class="outline-2">
+<h2 id="orgc0cff53"><span class="section-number-2">1.</span> 使用说明</h2>
+<div class="outline-text-2" id="text-1">
+</div>
+<div id="outline-container-org76885e0" class="outline-3">
+<h3 id="org76885e0"><span class="section-number-3">1.1.</span> 开启开发者控制台</h3>
+<div class="outline-text-3" id="text-1-1">
+<ol class="org-ol">
+<li>进入游戏的选项或键盘设置.<br></li>
+<li>打开高级设置,勾选 <code>Enable Developer Console</code>.<br></li>
+<li>游戏中按 <code>~</code> 呼出控制台;不同键盘布局下按键可能不同.<br></li>
+<li>可选:将控制台绑定到方便使用的按键.<br></li>
+</ol>
+
+<div class="org-src-container">
+<pre class="src src-text"><code>bind p toggleconsole
+</code></pre>
+</div>
+
+<p>
+将 <code>p</code> 换成自己想使用的按键.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org68f4ed0" class="outline-3">
+<h3 id="org68f4ed0"><span class="section-number-3">1.2.</span> 权限与注意事项</h3>
+<div class="outline-text-3" id="text-1-2">
+<ul class="org-ul">
+<li>服务器类指令通常需要自己开房或拥有服务器管理员权限.<br></li>
+<li><code>sv_cheats 1</code> 可能让房间内其他玩家也能使用作弊指令.<br></li>
+<li>不要在不属于自己的公共服务器上尝试修改服务器设置.<br></li>
+<li>改动参数前记下原值;有些设置需要重启地图或服务器才能完全恢复.<br></li>
+<li>指令可能因游戏版本,地图或服务器配置而失效.<br></li>
+<li>输入 <code>find &lt;关键词&gt;</code> 或 <code>cvarlist</code> 可尝试查找当前版本支持的变量.<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-orgbb91b5e" class="outline-2">
+<h2 id="orgbb91b5e"><span class="section-number-2">2.</span> 作弊,移动与 AI</h2>
+<div class="outline-text-2" id="text-2">
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">指令</th>
+<th scope="col" class="org-left">用途</th>
+<th scope="col" class="org-left">备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left"><code>sv_cheats 1</code></td>
+<td class="org-left">开启作弊指令</td>
+<td class="org-left">自己开的房间中使用</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>sv_cheats 0</code></td>
+<td class="org-left">关闭作弊指令</td>
+<td class="org-left">不一定会还原所有其他参数</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>god</code></td>
+<td class="org-left">切换无敌模式</td>
+<td class="org-left">部分版本或情形下可能无效</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>noclip</code></td>
+<td class="org-left">切换飞行和穿墙</td>
+<td class="org-left">通常再次输入可关闭</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>notarget</code></td>
+<td class="org-left">尝试让 NPC 忽略玩家</td>
+<td class="org-left">版本支持情况可能不同</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>ai_disable 1</code></td>
+<td class="org-left">禁用 AI</td>
+<td class="org-left">可让僵尸停止行动</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>ai_disable 0</code></td>
+<td class="org-left">重新启用 AI</td>
+<td class="org-left">恢复僵尸行动</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="outline-container-orgbab0a75" class="outline-3">
+<h3 id="orgbab0a75"><span class="section-number-3">2.1.</span> 开启无敌模式</h3>
+<div class="outline-text-3" id="text-2-1">
+<div class="org-src-container">
+<pre class="src src-text"><code>sv_cheats 1
+god
+</code></pre>
+</div>
+
+<p>
+<code>god</code> 通常是切换指令;再次输入可尝试关闭.若无效,检查服务器权限和游戏版本.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org1314ad6" class="outline-3">
+<h3 id="org1314ad6"><span class="section-number-3">2.2.</span> 飞行和穿墙</h3>
+<div class="outline-text-3" id="text-2-2">
+<div class="org-src-container">
+<pre class="src src-text"><code>sv_cheats 1
+noclip
+</code></pre>
+</div>
+
+<p>
+再次输入 <code>noclip</code> 可尝试恢复正常移动.<br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-org24b3bf4" class="outline-2">
+<h2 id="org24b3bf4"><span class="section-number-2">3.</span> 僵尸行动控制</h2>
+<div class="outline-text-2" id="text-3">
+</div>
+<div id="outline-container-org481f187" class="outline-3">
+<h3 id="org481f187"><span class="section-number-3">3.1.</span> 冻结当前僵尸</h3>
+<div class="outline-text-3" id="text-3-1">
+<div class="org-src-container">
+<pre class="src src-text"><code>sv_cheats 1
+ai_disable 1
+</code></pre>
+</div>
+
+<p>
+此操作会禁用 AI,使僵尸停止行动;要恢复:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-text"><code>ai_disable 0
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgd7aac7a" class="outline-3">
+<h3 id="orgd7aac7a"><span class="section-number-3">3.2.</span> 限制僵尸攻击距离</h3>
+<div class="outline-text-3" id="text-3-2">
+<div class="org-src-container">
+<pre class="src src-text"><code>sv_cheats 1
+sv_zombie_reach 0
+</code></pre>
+</div>
+
+<p>
+可尝试将僵尸攻击触及距离设为 <code>0</code>.这不等于冻结僵尸,僵尸仍可能移动到玩家附近.<br>
+若命令无效,可尝试查询:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-text"><code>find zombie_reach
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org9187a83" class="outline-3">
+<h3 id="org9187a83"><span class="section-number-3">3.3.</span> 尝试让新生成的僵尸远离玩家</h3>
+<div class="outline-text-3" id="text-3-3">
+<div class="org-src-container">
+<pre class="src src-text"><code>sv_cheats 1
+ov_min_spawn_dist 1200
+</code></pre>
+</div>
+
+<p>
+<code>ov_min_spawn_dist</code> 可尝试设置僵尸生成点与玩家之间的最小距离.<br>
+它不会影响已经生成的僵尸;若服务器不识别此变量,检查:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-text"><code>find min_spawn_dist
+</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orgb362169" class="outline-2">
+<h2 id="orgb362169"><span class="section-number-2">4.</span> 复活与队友附近复活</h2>
+<div class="outline-text-2" id="text-4">
+</div>
+<div id="outline-container-orgd315c98" class="outline-3">
+<h3 id="orgd315c98"><span class="section-number-3">4.1.</span> 允许阵亡玩家复活</h3>
+<div class="outline-text-3" id="text-4-1">
+<p>
+在自己开的房间或有管理权限的服务器控制台中逐行输入:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-text"><code>sv_cheats 1
+sv_respawn_allowed 1
+sv_respawn_nearby_allowed 1
+</code></pre>
+</div>
+
+<ul class="org-ul">
+<li><code>sv_respawn_allowed 1</code>:允许阵亡玩家复活.<br></li>
+<li><code>sv_respawn_nearby_allowed 1</code>:允许在其他存活玩家附近复活.<br></li>
+<li>附近复活位置由游戏选择,不保证正好出现在指定队友身边.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgdcd4ba9" class="outline-3">
+<h3 id="orgdcd4ba9"><span class="section-number-3">4.2.</span> 允许不消耗复活代币(可选)</h3>
+<div class="outline-text-3" id="text-4-2">
+<div class="org-src-container">
+<pre class="src src-text"><code>sv_respawn_without_tokens 1
+</code></pre>
+</div>
+
+<p>
+可尝试允许玩家不消耗代币复活.若想保留代币机制,跳过此项.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-orgfc9c02d" class="outline-3">
+<h3 id="orgfc9c02d"><span class="section-number-3">4.3.</span> 触发阵亡玩家复活</h3>
+<div class="outline-text-3" id="text-4-3">
+<div class="org-src-container">
+<pre class="src src-text"><code>respawndeadplayers
+</code></pre>
+</div>
+
+<p>
+此命令可能复活所有符合条件的阵亡玩家,不一定能指定单独一名队友.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org546aac5" class="outline-3">
+<h3 id="org546aac5"><span class="section-number-3">4.4.</span> 设置复活时携带武器(可选)</h3>
+<div class="outline-text-3" id="text-4-4">
+<div class="org-src-container">
+<pre class="src src-text"><code>sv_respawn_with_weapon 1
+</code></pre>
+</div>
+
+<p>
+可尝试设置复活玩家携带武器.将参数改为 <code>0</code> 可尝试关闭;携带内容受服务器设置影响.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org2a1de42" class="outline-3">
+<h3 id="org2a1de42"><span class="section-number-3">4.5.</span> 附近复活完整示例</h3>
+<div class="outline-text-3" id="text-4-5">
+<div class="org-src-container">
+<pre class="src src-text"><code>sv_cheats 1
+sv_respawn_allowed 1
+sv_respawn_nearby_allowed 1
+respawndeadplayers
+</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orgb3e0183" class="outline-2">
+<h2 id="orgb3e0183"><span class="section-number-2">5.</span> 发放武器,弹药与物品</h2>
+<div class="outline-text-2" id="text-5">
+</div>
+<div id="outline-container-org092533c" class="outline-3">
+<h3 id="org092533c"><span class="section-number-3">5.1.</span> 常用指令</h3>
+<div class="outline-text-3" id="text-5-1">
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">指令</th>
+<th scope="col" class="org-left">用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left"><code>give &lt;物品名&gt;</code></td>
+<td class="org-left">尝试生成指定武器或物品</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>givecurrentammo</code></td>
+<td class="org-left">给当前持有的武器补充弹药</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>dump_weapon_registry</code></td>
+<td class="org-left">输出可生成武器名称</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>impulse 101</code></td>
+<td class="org-left">尝试生成一批武器和物品</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-org1a429a3" class="outline-3">
+<h3 id="org1a429a3"><span class="section-number-3">5.2.</span> 枪支示例</h3>
+<div class="outline-text-3" id="text-5-2">
+<div class="org-src-container">
+<pre class="src src-text"><code>sv_cheats 1
+give fa_m16a4
+givecurrentammo
+</code></pre>
+</div>
+
+<p>
+其他枪械名称示例:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-text"><code>give fa_1911
+give fa_glock17
+give fa_870
+give fa_fnfal
+give fa_mac10
+give fa_mp5a3
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org65214ef" class="outline-3">
+<h3 id="org65214ef"><span class="section-number-3">5.3.</span> 药品和医疗用品示例</h3>
+<div class="outline-text-3" id="text-5-3">
+<div class="org-src-container">
+<pre class="src src-text"><code>sv_cheats 1
+give item_first_aid
+give item_bandages
+give item_pills
+give item_gene_therapy
+</code></pre>
+</div>
+
+<ul class="org-ul">
+<li><code>item_first_aid</code>:急救包.<br></li>
+<li><code>item_bandages</code>:绷带.<br></li>
+<li><code>item_pills</code>:药丸.<br></li>
+<li><code>item_gene_therapy</code>:基因治疗药剂.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org089fe60" class="outline-3">
+<h3 id="org089fe60"><span class="section-number-3">5.4.</span> 其他物品示例</h3>
+<div class="outline-text-3" id="text-5-4">
+<div class="org-src-container">
+<pre class="src src-text"><code>give me_shovel
+give exp_molotov
+give tool_welder
+</code></pre>
+</div>
+
+<p>
+物品会生成在玩家附近;看不到时,可低头查看地面并确认周围有空间.<br>
+物品名称可能因版本不同而变化,可用 <code>dump_weapon_registry</code> 查询武器名称.<br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-orgb99f62f" class="outline-2">
+<h2 id="orgb99f62f"><span class="section-number-2">6.</span> 感染,僵尸和服务器参数</h2>
+<div class="outline-text-2" id="text-6">
+<p>
+以下为可尝试的设置示例,不代表游戏默认值;使用前建议记下原值.<br>
+</p>
+
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">指令</th>
+<th scope="col" class="org-left">用途</th>
+<th scope="col" class="org-left">备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left"><code>sv_infection_chance 0</code></td>
+<td class="org-left">尝试将感染几率设为 0</td>
+<td class="org-left">版本或服务器可能不支持</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>sv_infectionlength 90000</code></td>
+<td class="org-left">尝试设置感染持续时间</td>
+<td class="org-left">示例值为 90000</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>sv_zombie_health 100</code></td>
+<td class="org-left">尝试设置僵尸生命值</td>
+<td class="org-left">示例值为 100</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>sv_health_station_health 800</code></td>
+<td class="org-left">尝试设置医疗站生命值</td>
+<td class="org-left">示例值为 800</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>sv_gravity &lt;数值&gt;</code></td>
+<td class="org-left">调整重力</td>
+<td class="org-left">按服务器变量支持情况使用</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>sv_kills_per_token 1</code></td>
+<td class="org-left">调整获得复活代币所需击杀数</td>
+<td class="org-left">可能仅适用于特定模式</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>sv_idle_autokick_enabled 0</code></td>
+<td class="org-left">尝试关闭空闲踢出</td>
+<td class="org-left">版本或服务器可能不支持</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-orgf079e93" class="outline-2">
+<h2 id="orgf079e93"><span class="section-number-2">7.</span> 地图与服务器管理</h2>
+<div class="outline-text-2" id="text-7">
+</div>
+<div id="outline-container-org01def08" class="outline-3">
+<h3 id="org01def08"><span class="section-number-3">7.1.</span> 查看服务器状态</h3>
+<div class="outline-text-3" id="text-7-1">
+<div class="org-src-container">
+<pre class="src src-text"><code>status
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgfaada12" class="outline-3">
+<h3 id="orgfaada12"><span class="section-number-3">7.2.</span> 切换地图</h3>
+<div class="outline-text-3" id="text-7-2">
+<div class="org-src-container">
+<pre class="src src-text"><code>changelevel &lt;&#22320;&#22270;&#21517;&gt;
+</code></pre>
+</div>
+
+<p>
+示例:<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-text"><code>changelevel nmo_broadway
+</code></pre>
+</div>
+
+<p>
+地图必须已安装在服务器上;切图通常需要房主或管理员权限.<br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-org5672908" class="outline-2">
+<h2 id="org5672908"><span class="section-number-2">8.</span> 查询指令与排错</h2>
+<div class="outline-text-2" id="text-8">
+<div class="org-src-container">
+<pre class="src src-text"><code>cvarlist
+find &lt;&#20851;&#38190;&#35789;&gt;
+dump_weapon_registry
+</code></pre>
+</div>
+
+<ul class="org-ul">
+<li><code>cvarlist</code>:尝试列出控制台变量,输出可能很多.<br></li>
+<li><code>find &lt;关键词&gt;</code>:按关键词查找当前版本支持的命令或变量.<br></li>
+<li><code>dump_weapon_registry</code>:查找可生成的武器名称.<br></li>
+<li>若命令无效,检查拼写,权限,地图模式和服务器控制台输出.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org8d26fad" class="outline-2">
+<h2 id="org8d26fad"><span class="section-number-2">9.</span> 常用操作速查</h2>
+<div class="outline-text-2" id="text-9">
+</div>
+<div id="outline-container-org6114427" class="outline-3">
+<h3 id="org6114427"><span class="section-number-3">9.1.</span> 无敌</h3>
+<div class="outline-text-3" id="text-9-1">
+<div class="org-src-container">
+<pre class="src src-text"><code>sv_cheats 1
+god
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org90a3920" class="outline-3">
+<h3 id="org90a3920"><span class="section-number-3">9.2.</span> 冻结僵尸</h3>
+<div class="outline-text-3" id="text-9-2">
+<div class="org-src-container">
+<pre class="src src-text"><code>sv_cheats 1
+ai_disable 1
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgab9684b" class="outline-3">
+<h3 id="orgab9684b"><span class="section-number-3">9.3.</span> 恢复僵尸行动</h3>
+<div class="outline-text-3" id="text-9-3">
+<div class="org-src-container">
+<pre class="src src-text"><code>ai_disable 0
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org432f770" class="outline-3">
+<h3 id="org432f770"><span class="section-number-3">9.4.</span> 给自己枪和弹药</h3>
+<div class="outline-text-3" id="text-9-4">
+<div class="org-src-container">
+<pre class="src src-text"><code>sv_cheats 1
+give fa_m16a4
+givecurrentammo
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org5f30ab5" class="outline-3">
+<h3 id="org5f30ab5"><span class="section-number-3">9.5.</span> 给自己医疗用品</h3>
+<div class="outline-text-3" id="text-9-5">
+<div class="org-src-container">
+<pre class="src src-text"><code>sv_cheats 1
+give item_first_aid
+give item_bandages
+give item_pills
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orge3ba89c" class="outline-3">
+<h3 id="orge3ba89c"><span class="section-number-3">9.6.</span> 允许队友在附近复活</h3>
+<div class="outline-text-3" id="text-9-6">
+<div class="org-src-container">
+<pre class="src src-text"><code>sv_cheats 1
+sv_respawn_allowed 1
+sv_respawn_nearby_allowed 1
+respawndeadplayers
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org08c3f59" class="outline-3">
+<h3 id="org08c3f59"><span class="section-number-3">9.7.</span> 关闭作弊</h3>
+<div class="outline-text-3" id="text-9-7">
+<div class="org-src-container">
+<pre class="src src-text"><code>sv_cheats 0
+</code></pre>
+</div>
+
+<p>
+关闭作弊不保证自动还原此前改动的服务器变量;如需还原,请重新设置对应参数或重启地图/服务器.<br>
+</p>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

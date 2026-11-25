@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>emacs内置help系统的合理使用</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-09-13 Sun 00:10</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">emacs内置help系统的合理使用</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#org44cd9b1">1. 一句话总纲</a></li>
+<li><a href="#orga062c1d">2. 第一部分:解决常见问题的思路</a>
+<ul>
+<li><a href="#org25e09c1">2.1. 线索分类(先问自己:我手里有什么？)</a></li>
+<li><a href="#org914ed46">2.2. 帮助入口速查表</a></li>
+<li><a href="#org851b46f">2.3. 标准排查五步流程</a></li>
+<li><a href="#org03bb951">2.4. 报错时怎么做</a></li>
+</ul>
+</li>
+<li><a href="#org5539a56">3. 第二部分:用内置帮助与官方文档写 ELisp</a>
+<ul>
+<li><a href="#org27a14ec">3.1. 三份官方文档(Info 里按这个优先级读)</a></li>
+<li><a href="#org777e5e3">3.2. 写代码前:查函数的正确姿势</a></li>
+<li><a href="#org4fdd401">3.3. 读源码(最靠谱的"官方示例库")</a></li>
+<li><a href="#org9c5f445">3.4. 交互式实验(边写边验,别等全写完)</a></li>
+<li><a href="#org2e54b38">3.5. 写代码的完整流程(思路)</a></li>
+<li><a href="#orgcf5d642">3.6. 查语法/语义的 Info 技巧</a></li>
+</ul>
+</li>
+<li><a href="#orgaf54794">4. 总结口诀</a></li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-org44cd9b1" class="outline-2">
+<h2 id="org44cd9b1"><span class="section-number-2">1.</span> 一句话总纲</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+不靠外部工具,Emacs 自带三样东西就够用:<br>
+</p>
+<ol class="org-ol">
+<li>帮助系统(<code>C-h</code> 前缀 + <code>describe-*</code> + <code>apropos</code> + <code>customize</code>)<br></li>
+<li>官方 Info 文档(Emacs 手册 / ELisp 手册 / ELisp 入门)<br></li>
+<li>源码本身(<code>find-function</code> / <code>find-variable</code> / <code>find-library</code>)<br></li>
+</ol>
+
+<p>
+核心心法:*根据你手上已有的线索类型,选对入口;然后顺着文档链接往下钻.*<br>
+</p>
+</div>
+</div>
+<div id="outline-container-orga062c1d" class="outline-2">
+<h2 id="orga062c1d"><span class="section-number-2">2.</span> 第一部分:解决常见问题的思路</h2>
+<div class="outline-text-2" id="text-2">
+</div>
+<div id="outline-container-org25e09c1" class="outline-3">
+<h3 id="org25e09c1"><span class="section-number-3">2.1.</span> 线索分类(先问自己:我手里有什么？)</h3>
+<div class="outline-text-3" id="text-2-1">
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">我手上有的东西</th>
+<th scope="col" class="org-left">该用的入口</th>
+<th scope="col" class="org-left">说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">只有模糊关键词</td>
+<td class="org-left"><code>C-h a</code> / <code>C-h d</code> (apropos)</td>
+<td class="org-left">按词搜命令/文档</td>
+</tr>
+
+<tr>
+<td class="org-left">正在某个模式里</td>
+<td class="org-left"><code>C-h m</code> (describe-mode)</td>
+<td class="org-left">看当前模式所有键与变量</td>
+</tr>
+
+<tr>
+<td class="org-left">知道某个按键</td>
+<td class="org-left"><code>C-h k</code> (describe-key)</td>
+<td class="org-left">反查键绑定的命令</td>
+</tr>
+
+<tr>
+<td class="org-left">知道函数/变量名</td>
+<td class="org-left"><code>C-h f</code> / <code>C-h v</code></td>
+<td class="org-left">精确确认 + 看源码位置</td>
+</tr>
+
+<tr>
+<td class="org-left">想改设置</td>
+<td class="org-left"><code>M-x customize-group</code></td>
+<td class="org-left">领域内所有可配置项打包看</td>
+</tr>
+
+<tr>
+<td class="org-left">想懂原理/概念</td>
+<td class="org-left"><code>C-h r</code> / <code>C-h i</code> (Info)</td>
+<td class="org-left">官方手册,讲分类和原理</td>
+</tr>
+
+<tr>
+<td class="org-left">文档讲不清</td>
+<td class="org-left"><code>M-x find-function</code> / <code>find-variable</code></td>
+<td class="org-left">直接读源码,终极手段</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-org914ed46" class="outline-3">
+<h3 id="org914ed46"><span class="section-number-3">2.2.</span> 帮助入口速查表</h3>
+<div class="outline-text-3" id="text-2-2">
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">快捷键</th>
+<th scope="col" class="org-left">命令</th>
+<th scope="col" class="org-left">作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left"><code>C-h C-h</code></td>
+<td class="org-left">help-for-help     n</td>
+<td class="org-left">帮助系统总目录(先背这个)</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>C-h f</code></td>
+<td class="org-left">describe-function</td>
+<td class="org-left">查函数:用途/签名/定义位置</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>C-h v</code></td>
+<td class="org-left">describe-variable</td>
+<td class="org-left">查变量:用途/默认值/当前值</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>C-h m</code></td>
+<td class="org-left">describe-mode</td>
+<td class="org-left">当前所有 mode 的说明页</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>C-h k</code></td>
+<td class="org-left">describe-key</td>
+<td class="org-left">按键 -&gt; 命令 + 文档</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>C-h b</code></td>
+<td class="org-left">describe-bindings</td>
+<td class="org-left">当前所有键绑定列表</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>C-h a</code></td>
+<td class="org-left">apropos-command</td>
+<td class="org-left">按关键词搜命令</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>C-h d</code></td>
+<td class="org-left">apropos-documentation</td>
+<td class="org-left">按关键词搜文档(含变量)</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>C-h r</code></td>
+<td class="org-left">info-emacs-manual</td>
+<td class="org-left">Emacs 手册</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>C-h i</code></td>
+<td class="org-left">info</td>
+<td class="org-left">Info 浏览器(<code>m</code> 菜单 <code>i</code> 索引 <code>s</code> 搜索)</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>C-h p</code></td>
+<td class="org-left">finder-by-keyword</td>
+<td class="org-left">按主题找包</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-org851b46f" class="outline-3">
+<h3 id="org851b46f"><span class="section-number-3">2.3.</span> 标准排查五步流程</h3>
+<div class="outline-text-3" id="text-2-3">
+<ol class="org-ol">
+<li><b>定线索</b>:我到底知道什么(词？键？模式？报错信息？)<br></li>
+<li><b>定位</b>:用对应入口搜出候选(apropos / describe-mode / describe-key)<br></li>
+<li><b>确认</b>:~C-h f~ / <code>C-h v</code> 逐个读文档,判断"这是不是我要的"<br></li>
+<li><b>改设</b>:文档底部的 <code>customize</code> 链接,或 <code>M-x customize-group</code> 可视化改<br></li>
+<li><b>持久</b>:决定写进 init.el 还是用 customize 保存(<code>customize</code> 会生成 <code>custom-set-variables</code>)<br></li>
+</ol>
+</div>
+</div>
+<div id="outline-container-org03bb951" class="outline-3">
+<h3 id="org03bb951"><span class="section-number-3">2.4.</span> 报错时怎么做</h3>
+<div class="outline-text-3" id="text-2-4">
+<ul class="org-ul">
+<li><code>M-x toggle-debug-on-error</code> 打开,再复现一次 -&gt; 弹出 <code>*Backtrace*</code><br></li>
+<li>回溯最上面几行 = 出错源头(哪个函数、哪个变量)<br></li>
+<li>对报错里的符号用 <code>find-variable</code> / <code>find-function</code> 查定义处<br></li>
+<li>关键字就是报错里的符号名(如 <code>void-variable</code> 的变量名)<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-org5539a56" class="outline-2">
+<h2 id="org5539a56"><span class="section-number-2">3.</span> 第二部分:用内置帮助与官方文档写 ELisp</h2>
+<div class="outline-text-2" id="text-3">
+</div>
+<div id="outline-container-org27a14ec" class="outline-3">
+<h3 id="org27a14ec"><span class="section-number-3">3.1.</span> 三份官方文档(Info 里按这个优先级读)</h3>
+<div class="outline-text-3" id="text-3-1">
+<table>
+
+
+<colgroup>
+<col  class="org-right">
+
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-right">优先级</th>
+<th scope="col" class="org-left">Info 入口</th>
+<th scope="col" class="org-left">手册名</th>
+<th scope="col" class="org-left">用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-right">1</td>
+<td class="org-left"><code>C-h i m eintr RET</code></td>
+<td class="org-left">An Intro to Programming in ELisp</td>
+<td class="org-left">入门:适合没系统学过 Lisp</td>
+</tr>
+
+<tr>
+<td class="org-right">2</td>
+<td class="org-left"><code>C-h i m elisp RET</code></td>
+<td class="org-left">Emacs Lisp Reference Manual</td>
+<td class="org-left">权威参考:查函数/变量语义</td>
+</tr>
+
+<tr>
+<td class="org-right">3</td>
+<td class="org-left"><code>C-h r</code></td>
+<td class="org-left">Emacs Manual</td>
+<td class="org-left">查"这个功能怎么用/怎么配"</td>
+</tr>
+</tbody>
+</table>
+
+<p>
+<b>写代码的顺序</b>:先 <code>eintr</code> 学基础语法 -&gt; 需要具体函数时查 <code>elisp</code> -&gt; 需要配某个功能时查 <code>emacs</code>.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org777e5e3" class="outline-3">
+<h3 id="org777e5e3"><span class="section-number-3">3.2.</span> 写代码前:查函数的正确姿势</h3>
+<div class="outline-text-3" id="text-3-2">
+<ul class="org-ul">
+<li><code>C-h f 函数名 RET</code> 读:签名(参数)、文档、*源码链接*<br></li>
+<li>文档里带 <code>info node</code> 链接的,点进去读更详细的说明<br></li>
+<li>没把握返回值/副作用 -&gt; 看文档里的例子<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org4fdd401" class="outline-3">
+<h3 id="org4fdd401"><span class="section-number-3">3.3.</span> 读源码(最靠谱的"官方示例库")</h3>
+<div class="outline-text-3" id="text-3-3">
+<ul class="org-ul">
+<li><code>M-x find-function</code> 跳到函数定义<br></li>
+<li><code>M-x find-variable</code> 跳到变量定义<br></li>
+<li><code>M-x find-library</code> 打开整个包<br></li>
+<li><b>心法</b>:Emacs 自带几万行现成的、写法规范的 Lisp,想实现某个功能,<br>
+先 <code>apropos</code> 找类似函数,再 <code>find-function</code> 看它怎么写,照着改.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org9c5f445" class="outline-3">
+<h3 id="org9c5f445"><span class="section-number-3">3.4.</span> 交互式实验(边写边验,别等全写完)</h3>
+<div class="outline-text-3" id="text-3-4">
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">操作</th>
+<th scope="col" class="org-left">命令</th>
+<th scope="col" class="org-left">作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left"><code>*scratch*</code> 缓冲区</td>
+<td class="org-left">直接进入</td>
+<td class="org-left">专门写临时 Lisp 的地方</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>C-x C-e</code></td>
+<td class="org-left">eval-last-sexp</td>
+<td class="org-left">求值光标前的表达式</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>C-j</code></td>
+<td class="org-left">eval-print-last-sexp</td>
+<td class="org-left">求值并把结果打印到下一行</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>C-M-x</code></td>
+<td class="org-left">eval-defun</td>
+<td class="org-left">求值光标所在的整个 defun</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>M-x ielm</code></td>
+<td class="org-left">(REPL)</td>
+<td class="org-left">交互式 ELisp 终端,可多行输入</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>M-x check-parens</code></td>
+<td class="org-left">-</td>
+<td class="org-left">检查括号配平(写大段代码必用)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-org2e54b38" class="outline-3">
+<h3 id="org2e54b38"><span class="section-number-3">3.5.</span> 写代码的完整流程(思路)</h3>
+<div class="outline-text-3" id="text-3-5">
+<ol class="org-ol">
+<li><b>找原型</b>: <code>apropos</code> 搜关键词,找有没有现成函数<br></li>
+<li><b>读原型</b>: <code>C-h f</code> 读签名和文档, <code>find-function</code> 读源码<br></li>
+<li><b>抄结构</b>:在 <code>*scratch*</code> 里写个最小例子, <code>C-j</code> 求值验证<br></li>
+<li><b>查语义</b>:不确定的宏/特殊形式(<code>let</code> <code>cond</code> <code>dolist</code>)查 <code>elisp</code> 手册<br></li>
+<li><b>组装</b>:拼成完整 defun, <code>C-M-x</code> 求值测试<br></li>
+<li><b>查错</b>: <code>M-x check-parens</code> ;若运行报错用 <code>toggle-debug-on-error</code> 看回溯<br></li>
+<li><b>落地</b>:确认无误后写进 init.el,重启或用 <code>eval-buffer</code> 加载验证<br></li>
+</ol>
+</div>
+</div>
+<div id="outline-container-orgcf5d642" class="outline-3">
+<h3 id="orgcf5d642"><span class="section-number-3">3.6.</span> 查语法/语义的 Info 技巧</h3>
+<div class="outline-text-3" id="text-3-6">
+<ul class="org-ul">
+<li>进 <code>C-h i</code> 后: <code>m elisp RET</code> 进 ELisp 手册<br></li>
+<li><code>i 关键字 RET</code> 查索引(如 <code>i let RET</code> , <code>i condition RET</code>)<br></li>
+<li><code>s 正则 RET</code> 全文搜索<br></li>
+<li><code>C-h S</code> (info-lookup-symbol):光标在符号上,直接跳该符号的文档<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-orgaf54794" class="outline-2">
+<h2 id="orgaf54794"><span class="section-number-2">4.</span> 总结口诀</h2>
+<div class="outline-text-2" id="text-4">
+<blockquote>
+<p>
+有词用 apropos,有模式用 describe-mode,有键用 describe-key,<br>
+有名用 describe-*,改设置用 customize,懂原理用 Info,<br>
+查不清 find-function 读源码;写代码进 scratch 边写边 C-j.<br>
+</p>
+</blockquote>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>傅里叶变换知识笔记</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+<script>
+  window.MathJax = {
+    tex: {
+      ams: {
+        multlineWidth: '85%'
+      },
+      tags: 'ams',
+      tagSide: 'right',
+      tagIndent: '.8em'
+    },
+    chtml: {
+      scale: 1.0,
+      displayAlign: 'center',
+      displayIndent: '0em'
+    },
+    svg: {
+      scale: 1.0,
+      displayAlign: 'center',
+      displayIndent: '0em'
+    },
+    output: {
+      font: 'mathjax-modern',
+      displayOverflow: 'overflow'
+    }
+  };
+</script>
+
+<script
+  id="MathJax-script"
+  async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+</script>
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-09-13 Sun 00:10</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">傅里叶变换知识笔记</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#orgdf512ab">1. 介绍</a></li>
+<li><a href="#orga4a9cf9">2. 声音信号的数字化基础</a>
+<ul>
+<li><a href="#org16b56c0">2.1. 采样率（Sample Rate）</a></li>
+<li><a href="#orgd7f3fdf">2.2. PCM 采样</a></li>
+<li><a href="#org13ddaa5">2.3. 声道与交织（Interleaved）</a></li>
+<li><a href="#org83a44ed">2.4. 时域 vs 频域</a></li>
+</ul>
+</li>
+<li><a href="#orgf7f61bc">3. 傅里叶变换的数学原理</a>
+<ul>
+<li><a href="#org71c7c6e">3.1. 傅里叶级数</a></li>
+<li><a href="#orgf049d4a">3.2. 连续傅里叶变换（CTFT）</a></li>
+<li><a href="#org35db36b">3.3. 离散傅里叶变换（DFT）</a></li>
+<li><a href="#orga8d1652">3.4. 快速傅里叶变换（FFT）</a></li>
+</ul>
+</li>
+<li><a href="#org4887aff">4. 频谱分析的关键概念</a>
+<ul>
+<li><a href="#org2a845ca">4.1. 频率分辨率</a></li>
+<li><a href="#org63409d2">4.2. 奈奎斯特频率</a></li>
+<li><a href="#org99f973c">4.3. 频谱泄漏与加窗</a></li>
+<li><a href="#org730c6c2">4.4. 幅度谱与功率谱</a></li>
+<li><a href="#orgac6138a">4.5. 幅度归一化</a></li>
+<li><a href="#orga037f26">4.6. 对数缩放</a></li>
+<li><a href="#orgd12e9aa">4.7. 直流分量与负频率</a></li>
+</ul>
+</li>
+<li><a href="#org3a725e7">5. Rust 实现路线</a>
+<ul>
+<li><a href="#orgaa63666">5.1. 依赖</a></li>
+<li><a href="#orge2e4e66">5.2. 处理流程</a></li>
+<li><a href="#orgcfa51b5">5.3. 代码骨架</a></li>
+<li><a href="#org4d0dcf4">5.4. 注意事项</a></li>
+</ul>
+</li>
+<li><a href="#org45fad31">6. 参考资源</a></li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-orgdf512ab" class="outline-2">
+<h2 id="orgdf512ab"><span class="section-number-2">1.</span> 介绍</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+本文整理利用傅里叶变换将声音的时域信号转换为频域信号、实现频谱分析所需掌握的具体知识。理论公式与Rust实现并重，实现部分基于本项目（mini_cava）已有的 Symphonia 解码逻辑。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-orga4a9cf9" class="outline-2">
+<h2 id="orga4a9cf9"><span class="section-number-2">2.</span> 声音信号的数字化基础</h2>
+<div class="outline-text-2" id="text-2">
+</div>
+<div id="outline-container-org16b56c0" class="outline-3">
+<h3 id="org16b56c0"><span class="section-number-3">2.1.</span> 采样率（Sample Rate）</h3>
+<div class="outline-text-3" id="text-2-1">
+<p>
+声音是连续的模拟信号，数字化时以固定频率进行采样。采样率 \(f_s\) 表示每秒采集的样本点数，单位为 Hz。常见值为 \(44100\ \text{Hz}\)（CD 音质）、\(48000\ \text{Hz}\) 等。<br>
+</p>
+
+<ul class="org-ul">
+<li>采样率决定了可表示的最高频率，见 <a href="#org63409d2">4.2</a>。<br></li>
+<li>在 Symphonia 中，采样率可从 <code>track.codec_params</code> 中获取。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgd7f3fdf" class="outline-3">
+<h3 id="orgd7f3fdf"><span class="section-number-3">2.2.</span> PCM 采样</h3>
+<div class="outline-text-3" id="text-2-2">
+<p>
+PCM（脉冲编码调制）得到的离散时间信号记作 \(x[n]\)，其中 \(n\) 为整数索引。本项目中音频已被解码为 =Vec&lt;f32&gt;=（见=src/main.rs=），每个元素即为一个采样点。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org13ddaa5" class="outline-3">
+<h3 id="org13ddaa5"><span class="section-number-3">2.3.</span> 声道与交织（Interleaved）</h3>
+<div class="outline-text-3" id="text-2-3">
+<p>
+多声道音频的样本以交织方式存储：<br>
+</p>
+
+<p>
+\[[L_0, R_0, L_1, R_1, \dots, L_{N-1}, R_{N-1}]\]<br>
+</p>
+
+<p>
+其中 \(L_i\)、\(R_i\) 分别为左、右声道第 \(i\) 个样本。做 FFT 前需按声道拆分，对每个声道分别进行变换。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org83a44ed" class="outline-3">
+<h3 id="org83a44ed"><span class="section-number-3">2.4.</span> 时域 vs 频域</h3>
+<div class="outline-text-3" id="text-2-4">
+<ul class="org-ul">
+<li>时域：描述振幅随时间的变化，即 \(x[n]\)。<br></li>
+<li>频域：描述信号中不同频率成分的能量分布。<br></li>
+</ul>
+
+<p>
+傅里叶变换的作用正是建立二者的桥梁。<br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-orgf7f61bc" class="outline-2">
+<h2 id="orgf7f61bc"><span class="section-number-2">3.</span> 傅里叶变换的数学原理</h2>
+<div class="outline-text-2" id="text-3">
+</div>
+<div id="outline-container-org71c7c6e" class="outline-3">
+<h3 id="org71c7c6e"><span class="section-number-3">3.1.</span> 傅里叶级数</h3>
+<div class="outline-text-3" id="text-3-1">
+<p>
+任意周期为 \(T\) 的信号可分解为不同频率的正弦波之和：<br>
+</p>
+
+<p>
+\[x(t) = a_0 + \sum_{k=1}^{\infty} \left[ a_k \cos\left(\frac{2\pi k t}{T}\right) + b_k \sin\left(\frac{2\pi k t}{T}\right) \right]\]<br>
+</p>
+
+<p>
+这揭示了"任何周期信号都是若干单频正弦波的叠加"这一核心思想。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-orgf049d4a" class="outline-3">
+<h3 id="orgf049d4a"><span class="section-number-3">3.2.</span> 连续傅里叶变换（CTFT）</h3>
+<div class="outline-text-3" id="text-3-2">
+<p>
+对于非周期信号，傅里叶级数推广为连续傅里叶变换：<br>
+</p>
+
+<p>
+\[X(f) = \int_{-\infty}^{\infty} x(t)\, e^{-j 2\pi f t}\, dt\]<br>
+</p>
+
+<p>
+其中 \(j = \sqrt{-1}\) 为虚数单位，\(X(f)\) 为复数，同时包含幅度与相位信息。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org35db36b" class="outline-3">
+<h3 id="org35db36b"><span class="section-number-3">3.3.</span> 离散傅里叶变换（DFT）</h3>
+<div class="outline-text-3" id="text-3-3">
+<p>
+计算机只能处理有限长的离散信号，因此使用 DFT。对长度为 \(N\) 的序列 \(x[n]\):<br>
+</p>
+
+<p>
+\[X[k] = \sum_{n=0}^{N-1} x[n] \cdot e^{-j 2\pi k n / N}, \qquad k = 0, 1, \dots, N-1\]<br>
+</p>
+
+<p>
+其中：<br>
+</p>
+<ul class="org-ul">
+<li>\(X[k]\) 为第 \(k\) 个频点（bin）的复数频谱值。<br></li>
+<li>\(X[k]\) 对应的实际频率为 \(f_k = \dfrac{k \cdot f_s}{N}\)。<br></li>
+<li>逆变换（IDFT）为 \(x[n] = \dfrac{1}{N} \sum_{k=0}^{N-1} X[k] \cdot e^{j 2\pi k n / N}\)。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orga8d1652" class="outline-3">
+<h3 id="orga8d1652"><span class="section-number-3">3.4.</span> 快速傅里叶变换（FFT）</h3>
+<div class="outline-text-3" id="text-3-4">
+<p>
+DFT 直接计算的时间复杂度为 \(O(N^2)\)。FFT 利用指数因子的周期性与对称性，将其降为 \(O(N \log N)\)，是实际应用中唯一使用的算法。<br>
+</p>
+
+<ul class="org-ul">
+<li>本项目采用手写的基-2 Cooley-Tukey 算法，不依赖第三方库。<br></li>
+<li>输入长度 \(N\) 通常取 \(2\) 的幂（如 \(1024\)、\(2048\)），以配合基-2 算法。<br></li>
+</ul>
+</div>
+<div id="outline-container-orgb40ddd7" class="outline-4">
+<h4 id="orgb40ddd7"><span class="section-number-4">3.4.1.</span> 基-2 Cooley-Tukey 算法</h4>
+<div class="outline-text-4" id="text-3-4-1">
+<p>
+其核心是"分治"：把长度为 \(N\) 的 DFT 按下标奇偶拆成两个长度为 \(N/2\) 的 DFT，递归（或迭代）求解。设旋转因子 \(W_N = e^{-j 2\pi / N}\)，则：<br>
+</p>
+
+<p>
+\[X[k] = E[k] + W_N^k\, O[k], \qquad X[k + N/2] = E[k] - W_N^k\, O[k]\]<br>
+</p>
+
+<p>
+其中 \(E[k]\)、\(O[k]\) 分别为偶数、奇数下标子序列的 DFT，此式即蝶形运算（butterfly）。<br>
+</p>
+
+<p>
+实现分为两步：<br>
+</p>
+<ol class="org-ol">
+<li>位反转置换（bit-reversal）：按二进制位反转后的下标重排输入。<br></li>
+<li>蝶形运算：子变换长度从 \(2\) 开始逐级翻倍，直至 \(N\)。<br></li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org4887aff" class="outline-2">
+<h2 id="org4887aff"><span class="section-number-2">4.</span> 频谱分析的关键概念</h2>
+<div class="outline-text-2" id="text-4">
+</div>
+<div id="outline-container-org2a845ca" class="outline-3">
+<h3 id="org2a845ca"><span class="section-number-3">4.1.</span> 频率分辨率</h3>
+<div class="outline-text-3" id="text-4-1">
+<p>
+相邻频点之间的频率间隔：<br>
+</p>
+
+<p>
+\[\Delta f = \frac{f_s}{N}\]<br>
+</p>
+
+<ul class="org-ul">
+<li>由采样率 \(f_s\) 与窗口长度 \(N\) 共同决定。<br></li>
+<li>\(N\) 越大，\(\Delta f\) 越小，频率分辨率越高。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org63409d2" class="outline-3">
+<h3 id="org63409d2"><span class="section-number-3">4.2.</span> 奈奎斯特频率</h3>
+<div class="outline-text-3" id="text-4-2">
+<p>
+根据采样定理，可无失真分析的最高频率为采样率的一半：<br>
+</p>
+
+<p>
+\[f_{Nyq} = \frac{f_s}{2}\]<br>
+</p>
+
+<p>
+例如 \(f_s = 44100\ \text{Hz}\) 时，\(f_{Nyq} = 22050\ \text{Hz}\)。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org99f973c" class="outline-3">
+<h3 id="org99f973c"><span class="section-number-3">4.3.</span> 频谱泄漏与加窗</h3>
+<div class="outline-text-3" id="text-4-3">
+<p>
+对信号进行有限长截断等价于乘以一个矩形窗，会使能量泄漏到邻近频点，导致频谱"展宽"。缓解方法是对帧数据乘以窗函数 \(w[n]\):<br>
+</p>
+
+<p>
+\[x_w[n] = x[n] \cdot w[n]\]<br>
+</p>
+
+<p>
+常用窗函数：<br>
+</p>
+<ul class="org-ul">
+<li>汉宁窗（Hann）：<br></li>
+</ul>
+
+<p>
+\[w[n] = 0.5 \left[ 1 - \cos\left(\frac{2\pi n}{N-1}\right) \right]\]<br>
+</p>
+
+<ul class="org-ul">
+<li>汉明窗（Hamming）：<br></li>
+</ul>
+
+<p>
+\[w[n] = 0.54 - 0.46 \cos\left(\frac{2\pi n}{N-1}\right)\]<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org730c6c2" class="outline-3">
+<h3 id="org730c6c2"><span class="section-number-3">4.4.</span> 幅度谱与功率谱</h3>
+<div class="outline-text-3" id="text-4-4">
+<p>
+FFT 输出 \(X[k]\) 为复数，取模得到幅度谱：<br>
+</p>
+
+<p>
+\[|X[k]| = \sqrt{\operatorname{Re}(X[k])^2 + \operatorname{Im}(X[k])^2}\]<br>
+</p>
+
+<p>
+功率谱为幅度的平方：<br>
+</p>
+
+<p>
+\[P[k] = |X[k]|^2\]<br>
+</p>
+</div>
+</div>
+<div id="outline-container-orgac6138a" class="outline-3">
+<h3 id="orgac6138a"><span class="section-number-3">4.5.</span> 幅度归一化</h3>
+<div class="outline-text-3" id="text-4-5">
+<ul class="org-ul">
+<li>FFT 输出幅度与 \(N\) 成正比，需除以 \(N\) 还原真实幅度。<br></li>
+<li>加窗会引入相干增益，除以窗函数之和 \(\sum w[n]\) 可修正。<br></li>
+<li>实际频谱可视化中常只关心相对能量，归一化方式可灵活选择。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orga037f26" class="outline-3">
+<h3 id="orga037f26"><span class="section-number-3">4.6.</span> 对数缩放</h3>
+<div class="outline-text-3" id="text-4-6">
+<p>
+人耳对响度的感知近似对数，故通常将幅度转为分贝（dB）：<br>
+</p>
+
+<p>
+\[X_{dB}[k] = 20 \log_{10}\left(|X[k]|\right)\]<br>
+</p>
+
+<p>
+频率轴也常取对数刻度，以贴合人耳对音高的感知。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-orgd12e9aa" class="outline-3">
+<h3 id="orgd12e9aa"><span class="section-number-3">4.7.</span> 直流分量与负频率</h3>
+<div class="outline-text-3" id="text-4-7">
+<ul class="org-ul">
+<li>\(X[0]\) 对应直流分量（DC），即信号的均值。<br></li>
+<li>实信号的频谱满足共轭对称：\(X[N-k] = \overline{X[k]}\)。因此只需保留 \(k = 0, 1, \dots, \lfloor N/2 \rfloor\) 部分。<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-org3a725e7" class="outline-2">
+<h2 id="org3a725e7"><span class="section-number-2">5.</span> Rust 实现路线</h2>
+<div class="outline-text-2" id="text-5">
+</div>
+<div id="outline-container-orgaa63666" class="outline-3">
+<h3 id="orgaa63666"><span class="section-number-3">5.1.</span> 依赖</h3>
+<div class="outline-text-3" id="text-5-1">
+<p>
+手写 FFT 仅使用标准库，无需为频谱分析额外引入第三方库。复数运算由自定义的 <code>Complex</code> 结构体完成，=Cargo.toml= 中仅保留用于解码的 =symphonia=。<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-toml"><code>[<span style="color: #11c777;">dependencies</span>]
+<span style="color: #4ae2f0;">symphonia</span> = <span style="color: #2fafff;">"0.6.1"</span>
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orge2e4e66" class="outline-3">
+<h3 id="orge2e4e66"><span class="section-number-3">5.2.</span> 处理流程</h3>
+<div class="outline-text-3" id="text-5-2">
+<ol class="org-ol">
+<li>分帧：按窗口大小 \(N\)（\(2\) 的幂，如 \(1024\)）从 PCM 切片。<br></li>
+<li>加窗：\(x_w[n] = x[n] \cdot w[n]\)。<br></li>
+<li>构造复数数组：实部为样本，虚部为 \(0\)。<br></li>
+<li>执行 FFT（位反转置换 + 蝶形运算）。<br></li>
+<li>求幅度谱并取 \(k = 0 \dots N/2\)。<br></li>
+<li>聚合频点能量，映射到显示频段（cava 风格条形）。<br></li>
+</ol>
+</div>
+</div>
+<div id="outline-container-orgcfa51b5" class="outline-3">
+<h3 id="orgcfa51b5"><span class="section-number-3">5.3.</span> 代码骨架</h3>
+<div class="outline-text-3" id="text-5-3">
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">use</span> <span style="color: #b6a0ff;">std</span>::<span style="color: #b6a0ff;">f32</span>::<span style="color: #b6a0ff;">consts</span>::<span style="color: #11c777;">PI</span>;
+
+<span style="color: #ef8386;">// &#25163;&#20889;&#22797;&#25968;&#31867;&#22411;&#65292;&#36991;&#20813;&#24341;&#20837;&#22806;&#37096;&#20381;&#36182;</span>
+<span style="color: #ff7f86;">#[derive(Clone, Copy, Debug)]</span>
+<span style="color: #79a8ff;">struct</span> <span style="color: #11c777;">Complex</span> {
+    <span style="color: #4ae2f0;">re</span>: <span style="color: #11c777;">f32</span>,
+    <span style="color: #4ae2f0;">im</span>: <span style="color: #11c777;">f32</span>,
+}
+
+<span style="color: #79a8ff;">impl</span> <span style="color: #11c777;">Complex</span> {
+    <span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">new</span>(<span style="color: #4ae2f0;">re</span>: <span style="color: #11c777;">f32</span>, <span style="color: #4ae2f0;">im</span>: <span style="color: #11c777;">f32</span>) -&gt; <span style="color: #11c777;">Self</span> {
+        <span style="color: #11c777;">Complex</span> { re, im }
+    }
+
+    <span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">add</span>(<span style="color: #79a8ff;">self</span>, <span style="color: #4ae2f0;">other</span>: <span style="color: #11c777;">Complex</span>) -&gt; <span style="color: #11c777;">Complex</span> {
+        <span style="color: #11c777;">Complex</span>::new(<span style="color: #79a8ff;">self</span>.re + other.re, <span style="color: #79a8ff;">self</span>.im + other.im)
+    }
+
+    <span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">sub</span>(<span style="color: #79a8ff;">self</span>, <span style="color: #4ae2f0;">other</span>: <span style="color: #11c777;">Complex</span>) -&gt; <span style="color: #11c777;">Complex</span> {
+        <span style="color: #11c777;">Complex</span>::new(<span style="color: #79a8ff;">self</span>.re - other.re, <span style="color: #79a8ff;">self</span>.im - other.im)
+    }
+
+    <span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">mul</span>(<span style="color: #79a8ff;">self</span>, <span style="color: #4ae2f0;">other</span>: <span style="color: #11c777;">Complex</span>) -&gt; <span style="color: #11c777;">Complex</span> {
+        <span style="color: #11c777;">Complex</span>::new(
+            <span style="color: #79a8ff;">self</span>.re * other.re - <span style="color: #79a8ff;">self</span>.im * other.im,
+            <span style="color: #79a8ff;">self</span>.re * other.im + <span style="color: #79a8ff;">self</span>.im * other.re,
+        )
+    }
+
+    <span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">norm</span>(<span style="color: #79a8ff;">self</span>) -&gt; <span style="color: #11c777;">f32</span> {
+        (<span style="color: #79a8ff;">self</span>.re * <span style="color: #79a8ff;">self</span>.re + <span style="color: #79a8ff;">self</span>.im * <span style="color: #79a8ff;">self</span>.im).sqrt()
+    }
+}
+
+<span style="color: #ef8386;">// &#36845;&#20195;&#24335;&#22522;-2 Cooley-Tukey FFT&#65288;&#21407;&#22320;&#35745;&#31639;&#65292;&#26410;&#24402;&#19968;&#21270;&#65289;</span>
+<span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">fft</span>(<span style="color: #4ae2f0;">input</span>: &amp;<span style="color: #79a8ff;">mut</span> [<span style="color: #11c777;">Complex</span>]) {
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">n</span> = input.len();
+    <span style="color: #feacd0;">assert</span>!(n.is_power_of_two(), <span style="color: #2fafff;">"N &#24517;&#39035;&#26159; 2 &#30340;&#24130;"</span>);
+
+    <span style="color: #ef8386;">// 1. &#20301;&#21453;&#36716;&#32622;&#25442;&#65288;bit-reversal permutation&#65289;</span>
+    <span style="color: #79a8ff;">let</span> <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">j</span> = <span style="color: #ffffff;">0usize</span>;
+    <span style="color: #79a8ff;">for</span> <span style="color: #4ae2f0;">i</span> <span style="color: #79a8ff;">in</span> <span style="color: #ffffff;">1</span>..n {
+        <span style="color: #79a8ff;">let</span> <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">bit</span> = n &gt;&gt; <span style="color: #ffffff;">1</span>;
+        <span style="color: #79a8ff;">while</span> j &amp; bit != <span style="color: #ffffff;">0</span> {
+            <span style="color: #4ae2f0;">j</span> ^= bit;
+            <span style="color: #4ae2f0;">bit</span> &gt;&gt;= <span style="color: #ffffff;">1</span>;
+        }
+        <span style="color: #4ae2f0;">j</span> ^= bit;
+        <span style="color: #79a8ff;">if</span> i &lt; j {
+            input.swap(i, j);
+        }
+    }
+
+    <span style="color: #ef8386;">// 2. &#34678;&#24418;&#36816;&#31639;&#65288;butterfly&#65289;&#65292;&#23376;&#21464;&#25442;&#38271;&#24230;&#20174; 2 &#36880;&#32423;&#32763;&#20493;</span>
+    <span style="color: #79a8ff;">let</span> <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">len</span> = <span style="color: #ffffff;">2usize</span>;
+    <span style="color: #79a8ff;">while</span> len &lt;= n {
+        <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">angle</span> = -<span style="color: #ffffff;">2.0</span> * <span style="color: #11c777;">PI</span> / (len <span style="color: #79a8ff;">as</span> <span style="color: #11c777;">f32</span>);
+        <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">w_len</span> = <span style="color: #11c777;">Complex</span>::new(angle.cos(), angle.sin());
+        <span style="color: #79a8ff;">for</span> <span style="color: #4ae2f0;">i</span> <span style="color: #79a8ff;">in</span> (<span style="color: #ffffff;">0</span>..n).step_by(len) {
+            <span style="color: #79a8ff;">let</span> <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">w</span> = <span style="color: #11c777;">Complex</span>::new(<span style="color: #ffffff;">1.0</span>, <span style="color: #ffffff;">0.0</span>);
+            <span style="color: #79a8ff;">for</span> <span style="color: #4ae2f0;">k</span> <span style="color: #79a8ff;">in</span> <span style="color: #ffffff;">0</span>..len / <span style="color: #ffffff;">2</span> {
+                <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">u</span> = input[i + k];
+                <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">v</span> = input[i + k + len / <span style="color: #ffffff;">2</span>].mul(w);
+                <span style="color: #4ae2f0;">input</span>[<span style="color: #4ae2f0;">i</span> + <span style="color: #4ae2f0;">k</span>] = u.add(v);
+                <span style="color: #4ae2f0;">input</span>[<span style="color: #4ae2f0;">i</span> + <span style="color: #4ae2f0;">k</span> + <span style="color: #4ae2f0;">len</span> / <span style="color: #ffffff;">2</span>] = u.sub(v);
+                <span style="color: #4ae2f0;">w</span> = w.mul(w_len);
+            }
+        }
+        <span style="color: #4ae2f0;">len</span> &lt;&lt;= <span style="color: #ffffff;">1</span>;
+    }
+}
+
+<span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">compute_spectrum</span>(<span style="color: #4ae2f0;">frame</span>: &amp;[<span style="color: #11c777;">f32</span>], <span style="color: #4ae2f0;">window</span>: &amp;[<span style="color: #11c777;">f32</span>]) -&gt; <span style="color: #11c777;">Vec</span>&lt;<span style="color: #11c777;">f32</span>&gt; {
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">n</span> = frame.len();
+    <span style="color: #feacd0;">assert_eq</span>!(frame.len(), window.len());
+    <span style="color: #feacd0;">assert</span>!(n.is_power_of_two(), <span style="color: #2fafff;">"N &#24517;&#39035;&#26159; 2 &#30340;&#24130;"</span>);
+
+    <span style="color: #ef8386;">// 1. &#21152;&#31383;&#65292;&#26500;&#36896;&#22797;&#25968;&#25968;&#32452;&#65288;&#23454;&#37096;&#20026;&#26679;&#26412;&#65292;&#34394;&#37096;&#20026; 0&#65289;</span>
+    <span style="color: #79a8ff;">let</span> <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">buffer</span>: <span style="color: #11c777;">Vec</span>&lt;<span style="color: #11c777;">Complex</span>&gt; = frame
+        .iter()
+        .zip(window.iter())
+        .map(|(&amp;<span style="color: #4ae2f0;">x</span>, &amp;<span style="color: #4ae2f0;">w</span>)| <span style="color: #11c777;">Complex</span>::new(x * w, <span style="color: #ffffff;">0.0</span>))
+        .collect();
+
+    <span style="color: #ef8386;">// 2. &#25191;&#34892;&#25163;&#20889; FFT</span>
+    fft(&amp;<span style="color: #79a8ff;">mut</span> buffer);
+
+    <span style="color: #ef8386;">// 3. &#27714;&#24133;&#24230;&#35889;&#65292;&#21482;&#21462; 0..=n/2&#65288;&#23454;&#20449;&#21495;&#39057;&#35889;&#20849;&#36717;&#23545;&#31216;&#65289;</span>
+    buffer[..=n / <span style="color: #ffffff;">2</span>]
+        .iter()
+        .map(|<span style="color: #4ae2f0;">c</span>| c.norm())
+        .collect()
+}
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org4d0dcf4" class="outline-3">
+<h3 id="org4d0dcf4"><span class="section-number-3">5.4.</span> 注意事项</h3>
+<div class="outline-text-3" id="text-5-4">
+<ul class="org-ul">
+<li>手写 FFT 输出的是未归一化 DFT，幅度需自行除以 \(N\)。<br></li>
+<li>输入长度 \(N\) 必须为 \(2\) 的幂，代码中已用 <code>assert!(n.is_power_of_two())</code> 校验。<br></li>
+<li>蝶形运算在 \(\log_2 N\) 层循环中原地完成，无需缓存 plan。<br></li>
+<li>多声道音频需先拆分为单声道再分别处理。<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-org45fad31" class="outline-2">
+<h2 id="org45fad31"><span class="section-number-2">6.</span> 参考资源</h2>
+<div class="outline-text-2" id="text-6">
+<ul class="org-ul">
+<li><a href="https://en.wikipedia.org/wiki/Cooley%E2%80%93Tukey_FFT_algorithm">Cooley–Tukey FFT 算法（Wikipedia）</a><br></li>
+<li>3Blue1Brown 傅里叶变换可视化视频<br></li>
+<li>《数字信号处理》教材中 DFT/FFT 章节<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

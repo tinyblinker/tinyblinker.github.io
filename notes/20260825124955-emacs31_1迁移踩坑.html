@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>emacs31.1迁移踩坑</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-09-13 Sun 00:10</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">emacs31.1迁移踩坑</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#org4792c50">1. 背景简介</a></li>
+<li><a href="#org87a5082">2. 分析</a></li>
+<li><a href="#org7b4ef3f">3. 重要知识链接</a></li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-org4792c50" class="outline-2">
+<h2 id="org4792c50"><span class="section-number-2">1.</span> 背景简介</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+一大早,就当我正常打开archlinux执行"sudo pacman -Syu"时发现了archlinux更新了emacs31.1<br>
+然而,当我进入emacs时,发现当我使用find-file等命令时,出现报错:<br>
+"Symbol's value as variable is void: diff-hl-mode&ndash;set-explicitly";<br>
+本来想用ai直接解决问题的,于是打开opencode,输入:<br>
+"分析当前emacs31.1配置,阅读emacs上游文档,给出文档原文,<br>
+分析:为什么我在执行"find-file"时会有报错:<br>
+'Symbol's value as variable is void: diff-hl-mode&ndash;set-explicitly'"<br>
+结果ai又是读源码,又是用高带宽高智商的优势拉取文档一同分析,知道耗费了我快1元的api费用;<br>
+然而,当我仔细分析之后,发现这本就不过是一个因为emacs版本迁移而elisp packages版本过时的小问题,<br>
+直接重新刷新软件包缓存即可,所以用ai作为辅助的度还需慎重考量<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org87a5082" class="outline-2">
+<h2 id="org87a5082"><span class="section-number-2">2.</span> 分析</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+"Symbol's value as variable is void: diff-hl-mode&ndash;set-explicitly"<br>
+这是一个variable-void的错误;<br>
+其中"diff-hl-mode&ndash;set-explicitly"是一个diff-hl-mode的"internal variable"<br>
+因为"&ndash;"即代表内部变量;结合当前情况:刚刚更新emacs31.1,各个插件已经好几天没更新,<br>
+所以可以知道,很可能是diff-hl插件版本太老导致的elisp不兼容问题?所以我重新eval了一遍所有配置,成功解决;<br>
+这个过程中我借助了ai,但是只是让它解释这个报错的原因,辅助我自己进行分析,拒绝ai加入分析(因为它会借助自己的<br>
+高带宽优势,做出各种不符合人类认知逻辑的分析,能解决问题,但不适合学习知识)<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org7b4ef3f" class="outline-2">
+<h2 id="org7b4ef3f"><span class="section-number-2">3.</span> 重要知识链接</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+<a href="20260825141916-emacs内置help系统的合理使用.html#ID-89b03cc2-6c95-46b5-b678-a6f66f52942b">emacs内置help系统的合理使用</a><br>
+</p>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

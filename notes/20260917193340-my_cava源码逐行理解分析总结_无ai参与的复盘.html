@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>my_cava源码逐行理解分析总结_无ai参与的复盘</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-09-17 Thu 22:30</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">my_cava源码逐行理解分析总结_无ai参与的复盘</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#org311ce3a">1. 遗憾(已知issues)</a></li>
+<li><a href="#org0578062">2. 主线程</a>
+<ul>
+<li><a href="#orgb49ee29">2.1. (<code>simplelog create</code>)初始化logger</a></li>
+<li><a href="#org99d2a04">2.2. (<code>crossterm create</code>)进入alternate screen</a></li>
+<li><a href="#orgc417dc7">2.3. (<code>apodize</code>)初始化hanning_window并计算window_sum</a>
+<ul>
+<li><a href="#orgf7e9c71">2.3.1. 初始化hanning_window这个Vector(但是把精度转换为f32,因为后续数据处理同一都是f32)</a></li>
+</ul>
+</li>
+<li><a href="#org4fd9b24">2.4. (<code>CPAL</code>)调用CPAL寻找pipewire的sink设备,实时提取出PCM数据并把数据压载入ring(环形缓冲区)</a>
+<ul>
+<li><a href="#org26ddcc2">2.4.1. 目前只实现了f32格式的支持</a></li>
+</ul>
+</li>
+<li><a href="#org3573dd6">2.5. (<code>杂项收尾</code>):等待所有线程退出,收尾工作</a></li>
+</ul>
+</li>
+<li><a href="#orgebf9d41">3. 子线程</a>
+<ul>
+<li><a href="#orge0360b1">3.1. (<code>rustfft</code>)spawn一个给rustfft进行fft的thread(线程)</a>
+<ul>
+<li><a href="#org9aa8355">3.1.1. 好的,如下是fft_worker这个线程执行的函数,有几点关键:</a></li>
+</ul>
+</li>
+<li><a href="#orgb763e51">3.2. (<code>crossterm</code>)spawn一个给ui_worker渲染ui界面的线程</a>
+<ul>
+<li><a href="#org30757b2">3.2.1. 好的,以下是display_fft_buffer(&amp;normed_half_db_data, &amp;mut spectrum_renderer)</a></li>
+</ul>
+</li>
+<li><a href="#org85771ca">3.3. (<code>crossterm</code>)spawn一个keyscan的线程</a>
+<ul>
+<li><a href="#org8227ee3">3.3.1. keyscan_worker()</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</nav>
+<p>
+程序主要按照如下顺序执行(非主要步骤已经省略)<br>
+</p>
+<div id="outline-container-org311ce3a" class="outline-2">
+<h2 id="org311ce3a"><span class="section-number-2">1.</span> 遗憾(已知issues)</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+目前我的ui是纯粹用crossterm这个create来绘制的,目前似乎<br>
+只能绘制字符,所以导致:<br>
+</p>
+<ul class="org-ul">
+<li>1.颜色渐变的最小步进是一个字符格子(理论上可以进一步通过设置前景和后景颜色实现半字符步进)<br></li>
+<li>2.频谱条顶部的坠格最小保持1/8平滑步进的大小是一个格子,因为不存在"中部填充"的unicode字符<br>
+于是无法实现小于一个字符的坠格的1/8平滑步进<br></li>
+<li>3.当坠格坠落到底部时,由于一个字符格只能显示一个字符,坠格的字符会强行覆盖频谱条的字符,导致不美观,出现一个明显空缺<br></li>
+<li>4.issue3的广义bug,只要频谱顶部与坠格接触,当字符格期望显示的字符冲突时,会导致异常的空缺,在频谱条落底时明显,在非底部时可忽略<br></li>
+</ul>
+<p>
+以上所有问题很大程度上都是字符绘制在ui渲染的限制导致的<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org0578062" class="outline-2">
+<h2 id="org0578062"><span class="section-number-2">2.</span> 主线程</h2>
+<div class="outline-text-2" id="text-2">
+</div>
+<div id="outline-container-orgb49ee29" class="outline-3">
+<h3 id="orgb49ee29"><span class="section-number-3">2.1.</span> (<code>simplelog create</code>)初始化logger</h3>
+<div class="outline-text-3" id="text-2-1">
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #9ac8e0;">/// &#21021;&#22987;&#21270;&#26085;&#24535;&#36755;&#20986;
+</span><span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">init_logger</span>() -&gt; <span style="color: #11c777;">Result</span>&lt;(), <span style="color: #b6a0ff;">anyhow</span>::<span style="color: #11c777;">Error</span>&gt; {
+    <span style="color: #11c777;">WriteLogger</span>::init(
+        <span style="color: #11c777;">LevelFilter</span>::<span style="color: #11c777;">Info</span>,
+        <span style="color: #11c777;">Config</span>::default(),
+        <span style="color: #11c777;">File</span>::create(<span style="color: #2fafff;">"my_cava.log"</span>).unwrap(),
+    )?;
+    <span style="color: #b6a0ff;">log</span>::<span style="color: #b6a0ff;">info</span>!(<span style="color: #2fafff;">"Hello logger!"</span>);
+    <span style="color: #b6a0ff;">log</span>::<span style="color: #b6a0ff;">error</span>!(<span style="color: #2fafff;">"This is when errors happended in logger!"</span>);
+    <span style="color: #11c777;">Ok</span>(())
+}
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org99d2a04" class="outline-3">
+<h3 id="org99d2a04"><span class="section-number-3">2.2.</span> (<code>crossterm create</code>)进入alternate screen</h3>
+<div class="outline-text-3" id="text-2-2">
+<p>
+alternate screen方便绘制ui,<br>
+"raw_mode"开启后能不按Enter就直接捕获键<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #9ac8e0;">/// enter alternate,enable raw mode(&#33021;&#19981;&#29992;&#25353;Enter&#30452;&#25509;&#25429;&#33719;&#38190;)
+</span><span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">enter_alternate_screen</span>() -&gt; <span style="color: #11c777;">Result</span>&lt;(), <span style="color: #b6a0ff;">anyhow</span>::<span style="color: #11c777;">Error</span>&gt; {
+    <span style="color: #79a8ff;">let</span> <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">stdout</span> = stdout();
+    enable_raw_mode()?;
+    <span style="color: #79a8ff;">let</span> _ = execute!(stdout, <span style="color: #11c777;">EnterAlternateScreen</span>, cursor::<span style="color: #11c777;">Hide</span>);
+    <span style="color: #11c777;">Ok</span>(())
+}
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgc417dc7" class="outline-3">
+<h3 id="orgc417dc7"><span class="section-number-3">2.3.</span> (<code>apodize</code>)初始化hanning_window并计算window_sum</h3>
+<div class="outline-text-3" id="text-2-3">
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">let</span> <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">hanning_window</span>: <span style="color: #11c777;">Vec</span>&lt;<span style="color: #11c777;">f32</span>&gt; = <span style="color: #feacd0;">vec</span>![];
+init_hanning_window(&amp;<span style="color: #79a8ff;">mut</span> hanning_window);
+<span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">window_sum</span>: <span style="color: #11c777;">f32</span> = hanning_window.iter().sum();
+</code></pre>
+</div>
+</div>
+<div id="outline-container-orgf7e9c71" class="outline-4">
+<h4 id="orgf7e9c71"><span class="section-number-4">2.3.1.</span> 初始化hanning_window这个Vector(但是把精度转换为f32,因为后续数据处理同一都是f32)</h4>
+<div class="outline-text-4" id="text-2-3-1">
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">init_hanning_window</span>(<span style="color: #4ae2f0;">hanning_window</span>: &amp;<span style="color: #79a8ff;">mut</span> <span style="color: #11c777;">Vec</span>&lt;<span style="color: #11c777;">f32</span>&gt;) -&gt; () {
+    *<span style="color: #4ae2f0;">hanning_window</span> = hanning_iter(<span style="color: #11c777;">FFT_SIZE</span>).map(|<span style="color: #4ae2f0;">x</span>| x <span style="color: #79a8ff;">as</span> <span style="color: #11c777;">f32</span>).collect();
+}
+</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org4fd9b24" class="outline-3">
+<h3 id="org4fd9b24"><span class="section-number-3">2.4.</span> (<code>CPAL</code>)调用CPAL寻找pipewire的sink设备,实时提取出PCM数据并把数据压载入ring(环形缓冲区)</h3>
+<div class="outline-text-3" id="text-2-4">
+<p>
+CPAL通过系统的pipewire的sink设备实时监听系统的声音PCM数据,并通过ring_da.p_a(producer_a)<br>
+压载数据到第一个和fft_work()线程共享的环形缓冲区(one producer+one consumer);<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #ef8386;">// CPAL create (!!should keep stream alive)</span>
+<span style="color: #79a8ff;">let</span> (<span style="color: #4ae2f0;">input_device</span>, <span style="color: #4ae2f0;">input_config</span>) = init_cpal()?;
+<span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">stream</span> = make_stream_cpal(&amp;input_device, &amp;input_config, ring_data.p_a)?;
+play_stream_cpal(&amp;stream)?;
+</code></pre>
+</div>
+</div>
+<div id="outline-container-org26ddcc2" class="outline-4">
+<h4 id="org26ddcc2"><span class="section-number-4">2.4.1.</span> 目前只实现了f32格式的支持</h4>
+<div class="outline-text-4" id="text-2-4-1">
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">make_stream_cpal</span>(
+    <span style="color: #4ae2f0;">input_device</span>: &amp;<span style="color: #11c777;">Device</span>,
+    <span style="color: #4ae2f0;">input_config</span>: &amp;<span style="color: #11c777;">SupportedStreamConfig</span>,
+    <span style="color: #4ae2f0;">p_a</span>: <span style="color: #11c777;">MyProducer</span>&lt;<span style="color: #11c777;">f32</span>&gt;,
+) -&gt; <span style="color: #11c777;">Result</span>&lt;<span style="color: #11c777;">Stream</span>, <span style="color: #b6a0ff;">anyhow</span>::<span style="color: #11c777;">Error</span>&gt; {
+    <span style="color: #ef8386;">// &#24320;&#22987;&#25191;&#34892;(&#20445;&#27963;stream&#21363;&#21487;,&#33258;&#26377;&#22810;&#32447;&#31243;&#35843;&#24230;)</span>
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">stream</span> = <span style="color: #79a8ff;">match</span> input_config.sample_format() {
+        <span style="color: #ef8386;">// SampleFormat::I8 =&gt; run::&lt;i8&gt;(&amp;input_device, input_config.into()),</span>
+        <span style="color: #ef8386;">// SampleFormat::I16 =&gt; run::&lt;i16&gt;(&amp;input_device, input_config.into()),</span>
+        <span style="color: #ef8386;">// SampleFormat::I32 =&gt; run::&lt;i32&gt;(&amp;input_device, input_config.into()),</span>
+        <span style="color: #ef8386;">// SampleFormat::I64 =&gt; run::&lt;i64&gt;(&amp;input_device, input_config.into()),</span>
+        <span style="color: #ef8386;">// SampleFormat::U8 =&gt; run::&lt;u8&gt;(&amp;input_device, input_config.into()),</span>
+        <span style="color: #ef8386;">// SampleFormat::U16 =&gt; run::&lt;u16&gt;(&amp;input_device, input_config.into()),</span>
+        <span style="color: #ef8386;">// SampleFormat::U32 =&gt; run::&lt;u32&gt;(&amp;input_device, input_config.into()),</span>
+        <span style="color: #ef8386;">// SampleFormat::U64 =&gt; run::&lt;u64&gt;(&amp;input_device, input_config.into()),</span>
+        <span style="color: #11c777;">SampleFormat</span>::<span style="color: #11c777;">F32</span> =&gt; run::&lt;<span style="color: #11c777;">f32</span>&gt;(&amp;input_device, (*input_config).into(), p_a),
+        <span style="color: #ef8386;">// SampleFormat::F64 =&gt; run::&lt;f64&gt;(&amp;input_device, input_config.into()),</span>
+        <span style="color: #4ae2f0;">sample_format</span> =&gt; <span style="color: #feacd0;">panic</span>!(<span style="color: #2fafff;">"Unsupported sample format '{sample_format}'"</span>),
+    }?;
+    <span style="color: #11c777;">Ok</span>(stream)
+}
+</code></pre>
+</div>
+</div>
+<ol class="org-ol">
+<li><a id="org0cf0e6a"></a>以下就是CPAL核心的run的实现,我在这里按照github上的参考代码实现了一下基础的run,<br>
+<div class="outline-text-5" id="text-2-4-1-1">
+<p>
+创建一个stream,并在数据处理回调函数(本质上是一个闭包,有点类似c中用函数指针申明的那种<br>
+回调函数),并在这个回调函数里面把实时pcm数据push给rust_fft线程(通过两者共有的ring_buf)<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">run</span>&lt;<span style="color: #11c777;">T</span>&gt;(
+    <span style="color: #4ae2f0;">input_device</span>: &amp;<span style="color: #11c777;">Device</span>,
+    <span style="color: #4ae2f0;">config</span>: <span style="color: #11c777;">StreamConfig</span>,
+    <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">producer</span>: <span style="color: #11c777;">MyProducer</span>&lt;<span style="color: #11c777;">f32</span>&gt;,
+) -&gt; <span style="color: #11c777;">Result</span>&lt;<span style="color: #11c777;">Stream</span>, <span style="color: #b6a0ff;">anyhow</span>::<span style="color: #11c777;">Error</span>&gt;
+<span style="color: #79a8ff;">where</span>
+    <span style="color: #11c777;">T</span>: <span style="color: #11c777;">SizedSample</span>
+        + <span style="color: #b6a0ff;">std</span>::<span style="color: #b6a0ff;">fmt</span>::<span style="color: #11c777;">Debug</span>
+        + <span style="color: #11c777;">Send</span>
+        + 'static
+        + <span style="color: #b6a0ff;">rustfft</span>::<span style="color: #b6a0ff;">num_traits</span>::<span style="color: #11c777;">FromPrimitive</span>
+        + <span style="color: #b6a0ff;">rustfft</span>::<span style="color: #b6a0ff;">num_traits</span>::<span style="color: #11c777;">Signed</span>
+        + <span style="color: #b6a0ff;">std</span>::<span style="color: #b6a0ff;">marker</span>::<span style="color: #11c777;">Sync</span>,
+    <span style="color: #11c777;">f32</span>: <span style="color: #11c777;">FromSample</span>&lt;<span style="color: #11c777;">T</span>&gt;,
+{
+    <span style="color: #ef8386;">// &#22622;&#20837;&#21021;&#22987;&#21270;&#38745;&#38899;&#25968;&#25454;</span>
+    <span style="color: #79a8ff;">for</span> _ <span style="color: #79a8ff;">in</span> <span style="color: #ffffff;">0</span>..(<span style="color: #11c777;">RING_CAPACITY_CPAL_FFT</span> / <span style="color: #ffffff;">2</span>) {
+        <span style="color: #ef8386;">// producer.try_push(T::EQUILIBRIUM).unwrap();</span>
+        producer.try_push(<span style="color: #ffffff;">0.0f32</span>).unwrap();
+    }
+
+    <span style="color: #ef8386;">// "move" &#33021;&#35753;&#38381;&#21253;&#25429;&#33719;&#30340;&#22806;&#37096;&#21464;&#37327;&#25343;&#36208;&#25152;&#26377;&#26435;,&#32780;&#19981;&#26159;&#32487;&#32493;&#20511;&#29992;&#20182;&#20204;</span>
+    <span style="color: #ef8386;">// !!!&#36825;&#37324;&#26377;&#24615;&#33021;&#38382;&#39064;,&#36825;&#37324;&#27809;&#24517;&#35201;&#29992;&#36845;&#20195;&#22120;,&#36825;&#20010;&#36845;&#20195;&#22120;&#38750;&#24120;&#32791;&#26102;(&#38169;&#35823;,&#32431;&#31639;&#26415;&#36816;&#31639;,&#19981;&#22826;&#32791;&#26102;)</span>
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">input_data_fn</span> = <span style="color: #79a8ff;">move</span> |<span style="color: #4ae2f0;">data</span>: &amp;[<span style="color: #11c777;">T</span>], _: &amp;<span style="color: #11c777;">InputCallbackInfo</span>| {
+        <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">pushed_slice_cnt</span> = producer.push_iter(data.iter().map(|<span style="color: #4ae2f0;">d</span>| d.to_sample::&lt;<span style="color: #11c777;">f32</span>&gt;()));
+        <span style="color: #79a8ff;">if</span> pushed_slice_cnt &lt; data.len() {
+            <span style="color: #b6a0ff;">log</span>::<span style="color: #b6a0ff;">error</span>!(<span style="color: #2fafff;">"Producing fft input data too fast!!"</span>);
+        }
+    };
+
+    <span style="color: #ef8386;">// Build streams.</span>
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">input_stream</span> = input_device.build_input_stream(config, input_data_fn, err_fn, <span style="color: #11c777;">None</span>)?;
+    <span style="color: #11c777;">Ok</span>(input_stream)
+}
+</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div id="outline-container-org3573dd6" class="outline-3">
+<h3 id="org3573dd6"><span class="section-number-3">2.5.</span> (<code>杂项收尾</code>):等待所有线程退出,收尾工作</h3>
+<div class="outline-text-3" id="text-2-5">
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #ef8386;">// wait for shutdown's change</span>
+<span style="color: #79a8ff;">while</span> shutdown.load(<span style="color: #11c777;">Ordering</span>::<span style="color: #11c777;">Relaxed</span>) != <span style="color: #b6a0ff;">true</span> {
+    <span style="color: #b6a0ff;">thread</span>::sleep(<span style="color: #11c777;">Duration</span>::from_millis(<span style="color: #ffffff;">100</span>));
+}
+<span style="color: #ef8386;">// clean: drop stream and exit all thread</span>
+drop(stream);
+<span style="color: #79a8ff;">let</span> _ = handle_fft.join().unwrap();
+<span style="color: #79a8ff;">let</span> _ = handle_keyscan.join().unwrap();
+<span style="color: #79a8ff;">let</span> _ = handle_ui.join().unwrap();
+
+<span style="color: #11c777;">Ok</span>(())
+</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orgebf9d41" class="outline-2">
+<h2 id="orgebf9d41"><span class="section-number-2">3.</span> 子线程</h2>
+<div class="outline-text-2" id="text-3">
+</div>
+<div id="outline-container-orge0360b1" class="outline-3">
+<h3 id="orge0360b1"><span class="section-number-3">3.1.</span> (<code>rustfft</code>)spawn一个给rustfft进行fft的thread(线程)</h3>
+<div class="outline-text-3" id="text-3-1">
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #ef8386;">// spawn the thread for fft</span>
+<span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">shutdown_worker_a</span> = <span style="color: #11c777;">Arc</span>::clone(&amp;shutdown);<span style="color: #ef8386;">// perform as signal to end thread</span>
+<span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">handle_fft</span> = <span style="color: #b6a0ff;">thread</span>::spawn(<span style="color: #79a8ff;">move</span> || {
+    fft_worker(
+        shutdown_worker_a,
+        ring_data.c_a,
+        ring_data.p_b,
+        (input_config.channels()) <span style="color: #79a8ff;">as</span> <span style="color: #11c777;">usize</span>,
+        &amp;hanning_window,
+    )
+});
+</code></pre>
+</div>
+</div>
+<div id="outline-container-org9aa8355" class="outline-4">
+<h4 id="org9aa8355"><span class="section-number-4">3.1.1.</span> 好的,如下是fft_worker这个线程执行的函数,有几点关键:</h4>
+<div class="outline-text-4" id="text-3-1-1">
+<p>
+1.等待ring_buffer(与CPAL产生的数据相连)产生充足数据后才开始fft<br>
+2.一旦有keyscan_worker线程的线程终止信号(一个跨线程同步的Arc&lt;AtomicBool&gt;),立刻停止<br>
+3.fft处理时需要通过迭代器处理hanning window,防止频谱泄漏<br>
+4.fft处理和加hannig窗之后的data需要推入另外一个ring_buffer中,与ui_worker渲染线程共享<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #9ac8e0;">/// RustFFT(PCM_data -&gt; &#39057;&#22495;&#25968;&#25454;&lt;&#39057;&#35889;&gt;)
+</span><span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">fft_worker</span>(
+    <span style="color: #4ae2f0;">shutdown_worker</span>: <span style="color: #11c777;">Arc</span>&lt;<span style="color: #11c777;">AtomicBool</span>&gt;,
+    <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">c_a</span>: <span style="color: #11c777;">MyConsumer</span>&lt;<span style="color: #11c777;">f32</span>&gt;,
+    <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">p_b</span>: <span style="color: #11c777;">MyProducer</span>&lt;<span style="color: #11c777;">Complex</span>&lt;<span style="color: #11c777;">f32</span>&gt;&gt;,
+    <span style="color: #4ae2f0;">channels</span>: <span style="color: #11c777;">usize</span>,
+    <span style="color: #4ae2f0;">hanning_window</span>: &amp;[<span style="color: #11c777;">f32</span>],
+) -&gt; <span style="color: #11c777;">Result</span>&lt;(), <span style="color: #b6a0ff;">anyhow</span>::<span style="color: #11c777;">Error</span>&gt; {
+    <span style="color: #79a8ff;">let</span> <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">planner</span> = <span style="color: #11c777;">FftPlanner</span>::&lt;<span style="color: #11c777;">f32</span>&gt;::new();
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">fft</span> = planner.plan_fft_forward(<span style="color: #11c777;">FFT_SIZE</span>);
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">required_samples</span> = <span style="color: #11c777;">FFT_SIZE</span> * channels;
+    <span style="color: #79a8ff;">let</span> <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">poped_data</span> = <span style="color: #feacd0;">vec</span>![<span style="color: #ffffff;">0.0f32</span>; required_samples];
+
+    <span style="color: #ef8386;">// init ringbuffer_b</span>
+    <span style="color: #79a8ff;">for</span> _ <span style="color: #79a8ff;">in</span> <span style="color: #ffffff;">0</span>..(<span style="color: #11c777;">RING_CAPACITY_FFT_UI</span> / <span style="color: #ffffff;">2</span>) {
+        p_b.try_push(<span style="color: #11c777;">Complex</span>::&lt;<span style="color: #11c777;">f32</span>&gt;::new(<span style="color: #ffffff;">0.0f32</span>, <span style="color: #ffffff;">0.0f32</span>)).unwrap();
+    }
+
+    <span style="color: #79a8ff;">loop</span> {
+        <span style="color: #ef8386;">// Data is consumed too fast!!! should be wait here</span>
+        <span style="color: #79a8ff;">while</span> c_a.occupied_len() &lt; required_samples {
+            <span style="color: #ef8386;">// If have signals to end thread, then exit it</span>
+            <span style="color: #79a8ff;">if</span> shutdown_worker.load(<span style="color: #11c777;">Ordering</span>::<span style="color: #11c777;">Relaxed</span>) == <span style="color: #b6a0ff;">true</span> {
+                <span style="color: #79a8ff;">break</span>;
+            }
+            <span style="color: #b6a0ff;">thread</span>::sleep(<span style="color: #11c777;">Duration</span>::from_millis(<span style="color: #ffffff;">1</span>));
+        }
+
+        <span style="color: #ef8386;">// If have signals to end thread, then exit it</span>
+        <span style="color: #79a8ff;">if</span> shutdown_worker.load(<span style="color: #11c777;">Ordering</span>::<span style="color: #11c777;">Relaxed</span>) == <span style="color: #b6a0ff;">true</span> {
+            <span style="color: #79a8ff;">break</span>;
+        }
+
+        <span style="color: #ef8386;">// use poped data to fill the buffer</span>
+        <span style="color: #79a8ff;">let</span> _ = c_a.pop_slice(&amp;<span style="color: #79a8ff;">mut</span> poped_data);
+
+        <span style="color: #ef8386;">// process buffer</span>
+        <span style="color: #79a8ff;">let</span> <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">buffer</span>: <span style="color: #11c777;">Vec</span>&lt;<span style="color: #11c777;">Complex</span>&lt;<span style="color: #11c777;">f32</span>&gt;&gt; = <span style="color: #feacd0;">vec</span>![];
+        process_hanning_window(&amp;<span style="color: #79a8ff;">mut</span> buffer, &amp;hanning_window, &amp;<span style="color: #79a8ff;">mut</span> poped_data, &amp;channels)?;
+        fft.process(&amp;<span style="color: #79a8ff;">mut</span> buffer);
+
+        <span style="color: #ef8386;">// push the "buffer" to the "ring_fft_ui"</span>
+        <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">pushed_slice_cnt</span> = p_b.push_slice(&amp;buffer);
+
+        <span style="color: #ef8386;">// log</span>
+        <span style="color: #79a8ff;">if</span> pushed_slice_cnt &lt; buffer.len() {
+            <span style="color: #b6a0ff;">log</span>::<span style="color: #b6a0ff;">error</span>!(<span style="color: #2fafff;">"Producing fft output data too fast!!"</span>);
+        }
+    }
+    <span style="color: #11c777;">Ok</span>(())
+}
+</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orgb763e51" class="outline-3">
+<h3 id="orgb763e51"><span class="section-number-3">3.2.</span> (<code>crossterm</code>)spawn一个给ui_worker渲染ui界面的线程</h3>
+<div class="outline-text-3" id="text-3-2">
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #ef8386;">// spawn the thread for ui display (crossterm create)</span>
+<span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">shutdown_worker_b</span> = <span style="color: #11c777;">Arc</span>::clone(&amp;shutdown);
+<span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">handle_ui</span> = <span style="color: #b6a0ff;">thread</span>::spawn(<span style="color: #79a8ff;">move</span> || {
+    ui_worker(shutdown_worker_b, ring_data.c_b, &amp;input_config, &amp;window_sum)
+});
+</code></pre>
+</div>
+<p>
+好的,如下是线程的核心处理函数,ui_worker(),有几点关键:<br>
+1.等待ring_buffer(与fft_worker线程产生的数据相连)产生充足数据后才开始"渲染"(本质上是打印字符)<br>
+2.一旦有keyscan_worker线程的线程终止信号(一个跨线程同步的Arc&lt;AtomicBool&gt;),立刻停止<br>
+3.先把fft产生的复数数据用fft_normalization(&amp;mut poped_data, &amp;window_sum)截取一半(另一半是对称的)取模并转换为db数据<br>
+!!!!4.核心显示逻辑:display_fft_buffer(&amp;normed_half_db_data, &amp;mut spectrum_renderer)?;<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">ui_worker</span>(
+    <span style="color: #4ae2f0;">shutdown_worker</span>: <span style="color: #11c777;">Arc</span>&lt;<span style="color: #11c777;">AtomicBool</span>&gt;,
+    <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">c_b</span>: <span style="color: #11c777;">MyConsumer</span>&lt;<span style="color: #11c777;">Complex</span>&lt;<span style="color: #11c777;">f32</span>&gt;&gt;,
+    <span style="color: #4ae2f0;">input_config</span>: &amp;<span style="color: #11c777;">SupportedStreamConfig</span>,
+    <span style="color: #4ae2f0;">window_sum</span>: &amp;<span style="color: #11c777;">f32</span>,
+) -&gt; <span style="color: #11c777;">Result</span>&lt;(), <span style="color: #b6a0ff;">anyhow</span>::<span style="color: #11c777;">Error</span>&gt; {
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">required_samples</span> = <span style="color: #11c777;">FFT_SIZE</span>;
+    <span style="color: #79a8ff;">let</span> <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">poped_data</span> = <span style="color: #feacd0;">vec</span>![<span style="color: #11c777;">Complex</span>::&lt;<span style="color: #11c777;">f32</span>&gt;::new(<span style="color: #ffffff;">0.0f32</span>, <span style="color: #ffffff;">0.0f32</span>); required_samples];
+    <span style="color: #ef8386;">// &#21551;&#21160;&#19968;&#20010;&#39057;&#35889;&#28210;&#26579;&#22120;&#23454;&#20363;</span>
+    <span style="color: #79a8ff;">let</span> <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">spectrum_renderer</span>: <span style="color: #11c777;">SpectrumRenderer</span> =
+        <span style="color: #11c777;">SpectrumRenderer</span>::new((*input_config).clone().into())?;
+
+    <span style="color: #79a8ff;">loop</span> {
+        <span style="color: #ef8386;">// wait for enough data to be received</span>
+        <span style="color: #79a8ff;">while</span> c_b.occupied_len() &lt; required_samples {
+            <span style="color: #ef8386;">// if have signals to end thread, then exit it</span>
+            <span style="color: #79a8ff;">if</span> shutdown_worker.load(<span style="color: #11c777;">Ordering</span>::<span style="color: #11c777;">Relaxed</span>) == <span style="color: #b6a0ff;">true</span> {
+                <span style="color: #79a8ff;">break</span>;
+            }
+            <span style="color: #b6a0ff;">thread</span>::sleep(<span style="color: #11c777;">Duration</span>::from_millis(<span style="color: #ffffff;">1</span>));
+        }
+
+        <span style="color: #ef8386;">// if have signals to end thread, then exit it</span>
+        <span style="color: #79a8ff;">if</span> shutdown_worker.load(<span style="color: #11c777;">Ordering</span>::<span style="color: #11c777;">Relaxed</span>) == <span style="color: #b6a0ff;">true</span> {
+            <span style="color: #79a8ff;">break</span>;
+        }
+
+        <span style="color: #ef8386;">// pop data</span>
+        <span style="color: #79a8ff;">let</span> _ = c_b.pop_slice(&amp;<span style="color: #79a8ff;">mut</span> poped_data);
+
+        <span style="color: #ef8386;">// fft normalization</span>
+        <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">normed_half_db_data</span> = fft_normalization(&amp;<span style="color: #79a8ff;">mut</span> poped_data, &amp;window_sum);
+
+        debug_println!(<span style="color: #2fafff;">"normed_half_db_data = {:?}"</span>, normed_half_db_data);
+        <span style="color: #ef8386;">// debug_println!("normed_data = {:?}", normed_half_db_data);</span>
+        <span style="color: #ef8386;">// draw the ui using the "crossterm"</span>
+        display_fft_buffer(&amp;normed_half_db_data, &amp;<span style="color: #79a8ff;">mut</span> spectrum_renderer)?;
+    }
+    <span style="color: #11c777;">Ok</span>(())
+}
+</code></pre>
+</div>
+</div>
+<div id="outline-container-org30757b2" class="outline-4">
+<h4 id="org30757b2"><span class="section-number-4">3.2.1.</span> 好的,以下是display_fft_buffer(&amp;normed_half_db_data, &amp;mut spectrum_renderer)</h4>
+<div class="outline-text-4" id="text-3-2-1">
+<p>
+要实现以下关键点:<br>
+1.autosens:根据本帧最大原始强度更新增益.峰值超了就快降,不足就慢升.(自适应声音大小)<br>
+(实现逻辑,计算所有bar的val(取出每个bar中最大的db数并映射其值到0-1之间),找到最大的val,以它作为参考点<br>
+设置增益(确定增益的值就是通过update_sensitivity(&amp;mut renderer.sensitivity, frame_max),并乘以增益<br>
+变化系数来确定,实现峰值超了就快降,不足就慢升))<br>
+2.renderer内部计算 <code>renderer.update_heights(x, max_height)</code>,得到柱子的高度和坠格的位置;<br>
+之后 <code>renderer.draw_bar(x, bar_height, cap)</code> 通过柱子的高度和坠格的位置lazy渲染(本质是写字符串);<br>
+之后stdout.flush()一次性把stdout缓存的一帧刷出;<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #9ac8e0;">/// &#29992; crossterm &#32472;&#21046;&#39057;&#35889;&#26465;&#12290;
+/// &#27969;&#31243;:&#21407;&#22987;&#24378;&#24230; -&gt; autosens &#24402;&#19968;&#21270; -&gt; attack/decay &#24179;&#28369; -&gt; &#26609;&#39640; + &#22368;&#26684; -&gt; &#28176;&#21464;&#30528;&#33394;&#12290;
+</span><span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">display_fft_buffer</span>(
+    <span style="color: #4ae2f0;">normed_half_db_data</span>: &amp;[<span style="color: #11c777;">f32</span>],
+    <span style="color: #4ae2f0;">renderer</span>: &amp;<span style="color: #79a8ff;">mut</span> <span style="color: #11c777;">SpectrumRenderer</span>,
+) -&gt; <span style="color: #11c777;">Result</span>&lt;(), <span style="color: #b6a0ff;">anyhow</span>::<span style="color: #11c777;">Error</span>&gt; {
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">bars</span> = renderer.bar_ranges.len();
+    <span style="color: #79a8ff;">if</span> bars == <span style="color: #ffffff;">0</span> {
+        <span style="color: #79a8ff;">return</span> <span style="color: #11c777;">Ok</span>(());
+    }
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">max_height</span> = (renderer.height - <span style="color: #ffffff;">1</span>) <span style="color: #79a8ff;">as</span> <span style="color: #11c777;">f32</span>;
+
+    <span style="color: #ef8386;">// &#31532;&#19968;&#36941;:&#31639;&#27599;&#26681;&#26609;&#23376;&#30340;&#21407;&#22987;&#24378;&#24230;,&#24182;&#26356;&#26032; autosens &#22686;&#30410;</span>
+    <span style="color: #79a8ff;">let</span> <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">frame_max</span> = <span style="color: #ffffff;">0.0f32</span>;
+    <span style="color: #79a8ff;">for</span> <span style="color: #4ae2f0;">x</span> <span style="color: #79a8ff;">in</span> <span style="color: #ffffff;">0</span>..bars {
+        <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">v</span> = compute_bar_value(normed_half_db_data, renderer.bar_ranges[x]);
+        <span style="color: #4ae2f0;">renderer</span>.bar_values[<span style="color: #4ae2f0;">x</span>] = v;
+        <span style="color: #4ae2f0;">frame_max</span> = frame_max.max(v);
+    }
+    update_sensitivity(&amp;<span style="color: #79a8ff;">mut</span> renderer.sensitivity, frame_max);
+
+    <span style="color: #ef8386;">// &#31532;&#20108;&#36941;:&#24179;&#28369; + &#22368;&#26684; + &#32472;&#21046;&#27599;&#19968;&#21015;</span>
+    <span style="color: #79a8ff;">for</span> <span style="color: #4ae2f0;">x</span> <span style="color: #79a8ff;">in</span> <span style="color: #ffffff;">0</span>..bars {
+        <span style="color: #79a8ff;">let</span> (<span style="color: #4ae2f0;">bar_height</span>, <span style="color: #4ae2f0;">cap</span>) = renderer.update_heights(x, max_height);
+        renderer.draw_bar(x, bar_height, cap)?;
+    }
+
+    <span style="color: #ef8386;">// &#25226;&#26412;&#24103; diff &#19968;&#27425;&#24615;&#21047;&#20986;</span>
+    renderer.stdout.flush()?;
+    <span style="color: #11c777;">Ok</span>(())
+}
+</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org85771ca" class="outline-3">
+<h3 id="org85771ca"><span class="section-number-3">3.3.</span> (<code>crossterm</code>)spawn一个keyscan的线程</h3>
+<div class="outline-text-3" id="text-3-3">
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #ef8386;">// spawn the thread for "exit" monitoring</span>
+<span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">shutdown_worker_c</span> = <span style="color: #11c777;">Arc</span>::clone(&amp;shutdown);
+<span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">handle_keyscan</span> = <span style="color: #b6a0ff;">thread</span>::spawn(<span style="color: #79a8ff;">move</span> || keyscan_worker(shutdown_worker_c));
+</code></pre>
+</div>
+</div>
+<div id="outline-container-org8227ee3" class="outline-4">
+<h4 id="org8227ee3"><span class="section-number-4">3.3.1.</span> keyscan_worker()</h4>
+<div class="outline-text-4" id="text-3-3-1">
+<p>
+1.等待按键输入"q"<br>
+2.检测完成后退出线程,并置位跨线程的标志位"<code>shutdown_worker</code>",方便后面等待所有线程退出并最终退出alternate screen<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">keyscan_worker</span>(<span style="color: #4ae2f0;">shutdown_worker</span>: <span style="color: #11c777;">Arc</span>&lt;<span style="color: #11c777;">AtomicBool</span>&gt;) -&gt; <span style="color: #11c777;">Result</span>&lt;(), <span style="color: #b6a0ff;">anyhow</span>::<span style="color: #11c777;">Error</span>&gt; {
+    <span style="color: #79a8ff;">loop</span> {
+        <span style="color: #ef8386;">// exit the AlternateScreen when press 'q'</span>
+        <span style="color: #79a8ff;">if</span> <span style="color: #b6a0ff;">event</span>::poll(<span style="color: #11c777;">Duration</span>::from_millis(<span style="color: #ffffff;">16</span>)).unwrap() {
+            <span style="color: #79a8ff;">if</span> <span style="color: #79a8ff;">let</span> <span style="color: #11c777;">Event</span>::<span style="color: #11c777;">Key</span>(<span style="color: #4ae2f0;">key</span>) = <span style="color: #b6a0ff;">event</span>::read()? {
+                <span style="color: #79a8ff;">if</span> key.code == <span style="color: #11c777;">KeyCode</span>::<span style="color: #11c777;">Char</span>(<span style="color: #2fafff;">'q'</span>) {
+                    <span style="color: #79a8ff;">break</span>;
+                }
+            }
+        }
+    }
+
+    <span style="color: #ef8386;">// end the whole program</span>
+    end_program_through_worker(shutdown_worker)?;
+    <span style="color: #11c777;">Ok</span>(())
+}
+</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

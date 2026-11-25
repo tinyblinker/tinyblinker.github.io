@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>捕获pipewire到PCM数据的历程</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-09-13 Sun 00:10</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">捕获pipewire到PCM数据的历程</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#org006e9f7">1. 目标</a></li>
+<li><a href="#orgbe32088">2. 原始代码的三个问题</a></li>
+<li><a href="#org5aeadb7">3. 改动一：修正设备查找</a>
+<ul>
+<li><a href="#orgbe5e0d3">3.1. 原代码</a></li>
+<li><a href="#org2f07566">3.2. 新代码</a></li>
+<li><a href="#orgdd58590">3.3. 依据</a></li>
+</ul>
+</li>
+<li><a href="#orgbbb9ac6">4. 改动二：回调中下混为单声道 f32</a>
+<ul>
+<li><a href="#orgaea38f3">4.1. 原代码</a></li>
+<li><a href="#orgc13dfb6">4.2. 新代码</a></li>
+<li><a href="#org443ecc7">4.3. 依据</a></li>
+</ul>
+</li>
+<li><a href="#org28f1164">5. 改动三（关键）：保持流存活</a>
+<ul>
+<li><a href="#org7140aa8">5.1. 原代码</a></li>
+<li><a href="#orgaca2aed">5.2. 新代码</a></li>
+<li><a href="#org0d0bda9">5.3. 依据</a></li>
+</ul>
+</li>
+<li><a href="#org243dbdf">6. 依赖与验证</a></li>
+<li><a href="#orgae291ca">7. 参考链接</a></li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-org006e9f7" class="outline-2">
+<h2 id="org006e9f7"><span class="section-number-2">1.</span> 目标</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+在 Arch Linux (PipeWire) 上，用 cpal 实时捕获"正在播放"的音频（即默认 sink 的<br>
+monitor），并转成单声道 f32 PCM。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-orgbe32088" class="outline-2">
+<h2 id="orgbe32088"><span class="section-number-2">2.</span> 原始代码的三个问题</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+原始代码:<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">use</span> <span style="color: #b6a0ff;">anyhow</span>::anyhow;
+<span style="color: #79a8ff;">use</span> <span style="color: #b6a0ff;">cpal</span>::{
+    <span style="color: #b6a0ff;">traits</span>::{<span style="color: #11c777;">DeviceTrait</span>, <span style="color: #11c777;">HostTrait</span>, <span style="color: #11c777;">StreamTrait</span>},
+    <span style="color: #11c777;">Device</span>, <span style="color: #11c777;">Error</span>, <span style="color: #11c777;">ErrorKind</span>, <span style="color: #11c777;">InputCallbackInfo</span>, <span style="color: #11c777;">SampleFormat</span>, <span style="color: #11c777;">SizedSample</span>, <span style="color: #11c777;">StreamConfig</span>,
+};
+
+<span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">err_fn</span>(<span style="color: #4ae2f0;">err</span>: <span style="color: #11c777;">Error</span>) {
+    <span style="color: #79a8ff;">match</span> err.kind() {
+        <span style="color: #11c777;">ErrorKind</span>::<span style="color: #11c777;">DeviceChanged</span> | <span style="color: #11c777;">ErrorKind</span>::<span style="color: #11c777;">RealtimeDenied</span> =&gt; {
+            <span style="color: #feacd0;">eprintln</span>!(<span style="color: #2fafff;">"{err}"</span>)
+        }
+        _ =&gt; <span style="color: #feacd0;">eprintln</span>!(<span style="color: #2fafff;">"Stream error: {err}"</span>),
+    }
+}
+
+<span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">run</span>&lt;<span style="color: #11c777;">T</span>&gt;(<span style="color: #4ae2f0;">input_device</span>: &amp;<span style="color: #11c777;">Device</span>, <span style="color: #4ae2f0;">config</span>: <span style="color: #11c777;">StreamConfig</span>) -&gt; <span style="color: #11c777;">Result</span>&lt;(), <span style="color: #b6a0ff;">anyhow</span>::<span style="color: #11c777;">Error</span>&gt;
+<span style="color: #79a8ff;">where</span>
+    <span style="color: #11c777;">T</span>: <span style="color: #11c777;">SizedSample</span> + <span style="color: #b6a0ff;">std</span>::<span style="color: #b6a0ff;">fmt</span>::<span style="color: #11c777;">Debug</span> + <span style="color: #11c777;">Send</span> + 'static,
+{
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">input_data_fn</span> = <span style="color: #79a8ff;">move</span> |<span style="color: #4ae2f0;">data</span>: &amp;[<span style="color: #11c777;">T</span>], _: &amp;<span style="color: #11c777;">InputCallbackInfo</span>| {
+        <span style="color: #feacd0;">println</span>!(<span style="color: #2fafff;">"data = {:?}"</span>, data);
+    };
+
+    <span style="color: #ef8386;">// Build streams.</span>
+    <span style="color: #feacd0;">println</span>!(
+        <span style="color: #2fafff;">"Attempting to build input stream with {} samples and `{config:?}`."</span>,
+        <span style="color: #11c777;">T</span>::<span style="color: #11c777;">FORMAT</span>
+    );
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">input_stream</span> = input_device.build_input_stream(config, input_data_fn, err_fn, <span style="color: #11c777;">None</span>)?;
+    <span style="color: #feacd0;">println</span>!(<span style="color: #2fafff;">"Successfully built streams."</span>);
+
+    <span style="color: #ef8386;">// play the stream</span>
+    input_stream.play()?;
+
+    <span style="color: #11c777;">Ok</span>(())
+}
+
+<span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">main</span>() -&gt; <span style="color: #11c777;">Result</span>&lt;(), <span style="color: #b6a0ff;">anyhow</span>::<span style="color: #11c777;">Error</span>&gt; {
+    <span style="color: #ef8386;">// init Host and Device</span>
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">host</span> = <span style="color: #b6a0ff;">cpal</span>::host_from_id(<span style="color: #b6a0ff;">cpal</span>::<span style="color: #11c777;">HostId</span>::<span style="color: #11c777;">PipeWire</span>)?;
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">input_device</span> = host
+        .input_devices()?
+        .find(|<span style="color: #4ae2f0;">d</span>| {
+            d.id()
+                .map(|<span style="color: #4ae2f0;">id</span>| id.to_string() == <span style="color: #2fafff;">"default_sink"</span>)
+                .unwrap_or(<span style="color: #b6a0ff;">false</span>)
+        })
+        .ok_or(anyhow!(<span style="color: #2fafff;">"&#25214;&#19981;&#21040;input sink"</span>))?;
+    <span style="color: #feacd0;">println</span>!(<span style="color: #2fafff;">"input device: {}"</span>, input_device);
+
+    <span style="color: #ef8386;">// init the config</span>
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">input_config</span> = input_device.default_input_config()?;
+    <span style="color: #feacd0;">println</span>!(
+        <span style="color: #2fafff;">"sample rate: {} Hz, channels: {}, format: {:?}"</span>,
+        input_config.sample_rate(),
+        input_config.channels(),
+        input_config.sample_format()
+    );
+
+    <span style="color: #79a8ff;">match</span> input_config.sample_format() {
+        <span style="color: #11c777;">SampleFormat</span>::<span style="color: #11c777;">I8</span> =&gt; run::&lt;<span style="color: #11c777;">i8</span>&gt;(&amp;input_device, input_config.into()),
+        <span style="color: #11c777;">SampleFormat</span>::<span style="color: #11c777;">I16</span> =&gt; run::&lt;<span style="color: #11c777;">i16</span>&gt;(&amp;input_device, input_config.into()),
+        <span style="color: #11c777;">SampleFormat</span>::<span style="color: #11c777;">I32</span> =&gt; run::&lt;<span style="color: #11c777;">i32</span>&gt;(&amp;input_device, input_config.into()),
+        <span style="color: #11c777;">SampleFormat</span>::<span style="color: #11c777;">I64</span> =&gt; run::&lt;<span style="color: #11c777;">i64</span>&gt;(&amp;input_device, input_config.into()),
+        <span style="color: #11c777;">SampleFormat</span>::<span style="color: #11c777;">U8</span> =&gt; run::&lt;<span style="color: #11c777;">u8</span>&gt;(&amp;input_device, input_config.into()),
+        <span style="color: #11c777;">SampleFormat</span>::<span style="color: #11c777;">U16</span> =&gt; run::&lt;<span style="color: #11c777;">u16</span>&gt;(&amp;input_device, input_config.into()),
+        <span style="color: #11c777;">SampleFormat</span>::<span style="color: #11c777;">U32</span> =&gt; run::&lt;<span style="color: #11c777;">u32</span>&gt;(&amp;input_device, input_config.into()),
+        <span style="color: #11c777;">SampleFormat</span>::<span style="color: #11c777;">U64</span> =&gt; run::&lt;<span style="color: #11c777;">u64</span>&gt;(&amp;input_device, input_config.into()),
+        <span style="color: #11c777;">SampleFormat</span>::<span style="color: #11c777;">F32</span> =&gt; run::&lt;<span style="color: #11c777;">f32</span>&gt;(&amp;input_device, input_config.into()),
+        <span style="color: #11c777;">SampleFormat</span>::<span style="color: #11c777;">F64</span> =&gt; run::&lt;<span style="color: #11c777;">f64</span>&gt;(&amp;input_device, input_config.into()),
+        <span style="color: #4ae2f0;">sample_format</span> =&gt; <span style="color: #feacd0;">panic</span>!(<span style="color: #2fafff;">"Unsupported sample format '{sample_format}'"</span>),
+    }?;
+
+    <span style="color: #ef8386;">// leave the thread sleep</span>
+    <span style="color: #79a8ff;">loop</span> {
+        <span style="color: #b6a0ff;">std</span>::<span style="color: #b6a0ff;">thread</span>::park();
+    }
+
+    <span style="color: #11c777;">Ok</span>(())
+}
+</code></pre>
+</div>
+<ol class="org-ol">
+<li>设备查找逻辑永远匹配不到目标设备；<br></li>
+<li>回调只打印原始数据，没有做 PCM 下混转换；<br></li>
+<li>最致命：流在 <code>play()</code> 之后立刻被 drop，导致收不到任何数据。<br></li>
+</ol>
+</div>
+</div>
+<div id="outline-container-org5aeadb7" class="outline-2">
+<h2 id="org5aeadb7"><span class="section-number-2">3.</span> 改动一：修正设备查找</h2>
+<div class="outline-text-2" id="text-3">
+</div>
+<div id="outline-container-orgbe5e0d3" class="outline-3">
+<h3 id="orgbe5e0d3"><span class="section-number-3">3.1.</span> 原代码</h3>
+<div class="outline-text-3" id="text-3-1">
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">input_device</span> = host
+    .input_devices()?
+    .find(|<span style="color: #4ae2f0;">d</span>| {
+        d.id()
+            .map(|<span style="color: #4ae2f0;">id</span>| id.to_string() == <span style="color: #2fafff;">"default_sink"</span>)
+            .unwrap_or(<span style="color: #b6a0ff;">false</span>)
+    })
+    .ok_or(anyhow!(<span style="color: #2fafff;">"&#25214;&#19981;&#21040;input sink"</span>))?;
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org2f07566" class="outline-3">
+<h3 id="org2f07566"><span class="section-number-3">3.2.</span> 新代码</h3>
+<div class="outline-text-3" id="text-3-2">
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">input_device</span> = host
+    .devices()?
+    .find(|<span style="color: #4ae2f0;">d</span>| {
+        d.description()
+            .map(|<span style="color: #4ae2f0;">desc</span>| desc.name() == <span style="color: #2fafff;">"default_sink"</span>)
+            .unwrap_or(<span style="color: #b6a0ff;">false</span>)
+    })
+    .or_else(|| {
+        host.devices().ok()?.into_iter().find(|<span style="color: #4ae2f0;">d</span>| {
+            d.id()
+                .map(|<span style="color: #4ae2f0;">id</span>| id.to_string().contains(<span style="color: #2fafff;">".monitor"</span>))
+                .unwrap_or(<span style="color: #b6a0ff;">false</span>)
+        })
+    })
+    .ok_or(anyhow!(<span style="color: #2fafff;">"&#25214;&#19981;&#21040;&#25773;&#25918;&#30417;&#21548;&#35774;&#22791;&#65288;default_sink / *.monitor&#65289;"</span>))?;
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgdd58590" class="outline-3">
+<h3 id="orgdd58590"><span class="section-number-3">3.3.</span> 依据</h3>
+<div class="outline-text-3" id="text-3-3">
+<ul class="org-ul">
+<li>cpal 的 PipeWire 后端里, <code>Device::id()</code> 返回内部 <code>node_name~；默认 sink 设备的
+  ~node_name</code> 是 <code>"sink_default"~，而 ~"default_sink"</code> 是它的 /描述名/（description），<br>
+只出现在 <code>description().name()</code> 或 <code>Display</code> 里。所以原来的 <code>id() == "default_sink"</code><br>
+永远为假。参见 cpal 源码 <code>src/host/pipewire/device.rs</code> 的 <code>sink_default()</code> 与 <code>id()</code>.<br></li>
+<li><code>default_input_device()</code> 返回的是麦克风（~default_input~），不是播放监听。对<br>
+<code>Role::Sink</code> 的设备建 <b>输入流</b> 时，cpal 会自动设置 <code>stream.capture.sink=true</code>,从而<br>
+捕获"正在播放到该 sink"的音频（monitor）.<br></li>
+<li>捕获桌面音频的官方讨论见 <a href="https://github.com/RustAudio/cpal/issues/736">cpal#736 Capture desktop audio on linux</a>。<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-orgbbb9ac6" class="outline-2">
+<h2 id="orgbbb9ac6"><span class="section-number-2">4.</span> 改动二：回调中下混为单声道 f32</h2>
+<div class="outline-text-2" id="text-4">
+</div>
+<div id="outline-container-orgaea38f3" class="outline-3">
+<h3 id="orgaea38f3"><span class="section-number-3">4.1.</span> 原代码</h3>
+<div class="outline-text-3" id="text-4-1">
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">run</span>&lt;<span style="color: #11c777;">T</span>&gt;(<span style="color: #4ae2f0;">input_device</span>: &amp;<span style="color: #11c777;">Device</span>, <span style="color: #4ae2f0;">config</span>: <span style="color: #11c777;">StreamConfig</span>) -&gt; <span style="color: #11c777;">Result</span>&lt;(), <span style="color: #b6a0ff;">anyhow</span>::<span style="color: #11c777;">Error</span>&gt;
+<span style="color: #79a8ff;">where</span>
+    <span style="color: #11c777;">T</span>: <span style="color: #11c777;">SizedSample</span> + <span style="color: #b6a0ff;">std</span>::<span style="color: #b6a0ff;">fmt</span>::<span style="color: #11c777;">Debug</span> + <span style="color: #11c777;">Send</span> + 'static,
+{
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">input_data_fn</span> = <span style="color: #79a8ff;">move</span> |<span style="color: #4ae2f0;">data</span>: &amp;[<span style="color: #11c777;">T</span>], _: &amp;<span style="color: #11c777;">InputCallbackInfo</span>| {
+        <span style="color: #feacd0;">println</span>!(<span style="color: #2fafff;">"data = {:?}"</span>, data);
+    };
+    <span style="color: #ef8386;">// ...</span>
+}
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgc13dfb6" class="outline-3">
+<h3 id="orgc13dfb6"><span class="section-number-3">4.2.</span> 新代码</h3>
+<div class="outline-text-3" id="text-4-2">
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">run</span>&lt;<span style="color: #11c777;">T</span>&gt;(
+    <span style="color: #4ae2f0;">input_device</span>: &amp;<span style="color: #11c777;">Device</span>,
+    <span style="color: #4ae2f0;">config</span>: <span style="color: #11c777;">StreamConfig</span>,
+    <span style="color: #4ae2f0;">channels</span>: <span style="color: #11c777;">usize</span>,
+) -&gt; <span style="color: #11c777;">Result</span>&lt;<span style="color: #11c777;">Stream</span>, <span style="color: #b6a0ff;">anyhow</span>::<span style="color: #11c777;">Error</span>&gt;
+<span style="color: #79a8ff;">where</span>
+    <span style="color: #11c777;">T</span>: <span style="color: #11c777;">SizedSample</span> + <span style="color: #11c777;">Sample</span> + <span style="color: #11c777;">Send</span> + 'static,
+    <span style="color: #11c777;">f32</span>: <span style="color: #11c777;">FromSample</span>&lt;<span style="color: #11c777;">T</span>&gt;,
+{
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">input_data_fn</span> = <span style="color: #79a8ff;">move</span> |<span style="color: #4ae2f0;">data</span>: &amp;[<span style="color: #11c777;">T</span>], _: &amp;<span style="color: #11c777;">InputCallbackInfo</span>| {
+        <span style="color: #79a8ff;">let</span> <span style="color: #79a8ff;">mut</span> <span style="color: #4ae2f0;">mono</span> = <span style="color: #11c777;">Vec</span>::with_capacity(data.len() / channels);
+        <span style="color: #79a8ff;">for</span> <span style="color: #4ae2f0;">frame</span> <span style="color: #79a8ff;">in</span> data.chunks_exact(channels) {
+            <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">sum</span>: <span style="color: #11c777;">f32</span> = frame.iter().map(|<span style="color: #4ae2f0;">s</span>| s.to_sample::&lt;<span style="color: #11c777;">f32</span>&gt;()).sum();
+            mono.push(sum / channels <span style="color: #79a8ff;">as</span> <span style="color: #11c777;">f32</span>);
+        }
+        <span style="color: #feacd0;">println</span>!(
+            <span style="color: #2fafff;">"mono: {} &#24103;, &#39318;&#24103; {:.4}"</span>,
+            mono.len(),
+            mono.first().copied().unwrap_or(<span style="color: #ffffff;">0.0</span>)
+        );
+    };
+    <span style="color: #ef8386;">// ...</span>
+}
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org443ecc7" class="outline-3">
+<h3 id="org443ecc7"><span class="section-number-3">4.3.</span> 依据</h3>
+<div class="outline-text-3" id="text-4-3">
+<ul class="org-ul">
+<li>回调收到的 <code>&amp;[T]</code> 是交错（interleaved）排列的 PCM（L R L R …），~T~ 由设备采样格式<br>
+决定；PipeWire 后端 <code>default_input_config()</code> 固定返回 ~F32~。<br></li>
+<li>用 <code>to_sample::&lt;f32&gt;()</code> 把任意整数/浮点样本统一转成归一化 f32，再按声道求平均完成下混。<br>
+该方法来自 dasp_sample 的 <code>Sample</code> trait（cpal 重导出，见<br>
+<a href="https://docs.rs/cpal/0.18.2/cpal/trait.Sample.html">Sample</a>）。泛型上因此需要补<br>
+<code>f32: FromSample&lt;T&gt;</code> 约束，并导入 ~Sample~、~FromSample~。<br></li>
+<li><code>channels</code> 由 <code>input_config.channels()</code> 传入（默认 sink 为 2）。<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-org28f1164" class="outline-2">
+<h2 id="org28f1164"><span class="section-number-2">5.</span> 改动三（关键）：保持流存活</h2>
+<div class="outline-text-2" id="text-5">
+</div>
+<div id="outline-container-org7140aa8" class="outline-3">
+<h3 id="org7140aa8"><span class="section-number-3">5.1.</span> 原代码</h3>
+<div class="outline-text-3" id="text-5-1">
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">input_stream</span> = input_device.build_input_stream(config, input_data_fn, err_fn, <span style="color: #11c777;">None</span>)?;
+input_stream.play()?;
+<span style="color: #11c777;">Ok</span>(())
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgaca2aed" class="outline-3">
+<h3 id="orgaca2aed"><span class="section-number-3">5.2.</span> 新代码</h3>
+<div class="outline-text-3" id="text-5-2">
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">input_stream</span> = input_device.build_input_stream(config, input_data_fn, err_fn, <span style="color: #11c777;">None</span>)?;
+input_stream.play()?;
+<span style="color: #11c777;">Ok</span>(input_stream)
+</code></pre>
+</div>
+
+<p>
+并在 <code>main</code> 中接住返回的流，避免其被立即释放：<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">_stream</span> = <span style="color: #79a8ff;">match</span> input_config.sample_format() {
+    <span style="color: #ef8386;">// ... &#21508;&#26684;&#24335;&#20998;&#25903;&#35843;&#29992; run::&lt;T&gt;</span>
+    <span style="color: #4ae2f0;">sample_format</span> =&gt; <span style="color: #feacd0;">panic</span>!(<span style="color: #2fafff;">"Unsupported sample format '{sample_format}'"</span>),
+}?;
+
+<span style="color: #79a8ff;">loop</span> {
+    <span style="color: #b6a0ff;">std</span>::<span style="color: #b6a0ff;">thread</span>::park();
+}
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org0d0bda9" class="outline-3">
+<h3 id="org0d0bda9"><span class="section-number-3">5.3.</span> 依据</h3>
+<div class="outline-text-3" id="text-5-3">
+<ul class="org-ul">
+<li>cpal 的 <code>Stream::drop</code> 会发送 <code>Stop</code> 命令并 join 工作线程（见<br>
+<code>src/host/pipewire/stream.rs</code> 的 <code>impl Drop for Stream~）。原代码在 ~play()</code> 之后<br>
+立即从 <code>run()</code> 返回，局部变量 <code>input_stream</code> 随之被 drop，流刚启动即被销毁，回调永远<br>
+收不到数据。这就是"无法实时读取输入声音"的根因。<br></li>
+<li>参考官方示例 <a href="https://github.com/RustAudio/cpal/blob/master/examples/record_wav.rs">record_wav.rs</a>，<br>
+它在录制期间始终保持 <code>stream</code> 存活。<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-org243dbdf" class="outline-2">
+<h2 id="org243dbdf"><span class="section-number-2">6.</span> 依赖与验证</h2>
+<div class="outline-text-2" id="text-6">
+<ul class="org-ul">
+<li><code>Cargo.toml</code> 无需改动：~cpal = { version = "0.18.2", features = ["pipewire"] }~。<br></li>
+<li>验证输出示例：<br></li>
+</ul>
+<pre class="example" id="orgc270e89">
+mono: 512 帧, 首帧 0.0000
+mono: 512 帧, 首帧 -0.0603
+mono: 512 帧, 首帧 -0.0359
+</pre>
+</div>
+</div>
+<div id="outline-container-orgae291ca" class="outline-2">
+<h2 id="orgae291ca"><span class="section-number-2">7.</span> 参考链接</h2>
+<div class="outline-text-2" id="text-7">
+<ul class="org-ul">
+<li><a href="https://docs.rs/cpal/0.18.2/cpal/">cpal API 文档</a><br></li>
+<li><a href="https://docs.rs/cpal/0.18.2/cpal/traits/DeviceTrait.html">DeviceTrait</a><br></li>
+<li><a href="https://docs.rs/cpal/0.18.2/cpal/traits/HostTrait.html">HostTrait</a><br></li>
+<li><a href="https://docs.rs/cpal/0.18.2/cpal/traits/StreamTrait.html">StreamTrait</a><br></li>
+<li><a href="https://docs.rs/cpal/0.18.2/cpal/trait.Sample.html">Sample</a><br></li>
+<li><a href="https://docs.rs/cpal/0.18.2/cpal/trait.FromSample.html">FromSample</a><br></li>
+<li><a href="https://github.com/RustAudio/cpal/issues/736">cpal#736 Capture desktop audio on linux</a><br></li>
+<li><a href="https://github.com/RustAudio/cpal/blob/master/examples/record_wav.rs">record_wav.rs 示例</a><br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>在emacs的org-mode中使用latex的折腾记录</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+<script>
+  window.MathJax = {
+    tex: {
+      ams: {
+        multlineWidth: '85%'
+      },
+      tags: 'ams',
+      tagSide: 'right',
+      tagIndent: '.8em'
+    },
+    chtml: {
+      scale: 1.0,
+      displayAlign: 'center',
+      displayIndent: '0em'
+    },
+    svg: {
+      scale: 1.0,
+      displayAlign: 'center',
+      displayIndent: '0em'
+    },
+    output: {
+      font: 'mathjax-modern',
+      displayOverflow: 'overflow'
+    }
+  };
+</script>
+
+<script
+  id="MathJax-script"
+  async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+</script>
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-09-13 Sun 00:10</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">在emacs的org-mode中使用latex的折腾记录</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#orgeb5f8b6">1. 目标与背景</a></li>
+<li><a href="#org738b372">2. 基本配置</a>
+<ul>
+<li><a href="#org6e10a94">2.1. 设置默认进程</a></li>
+<li><a href="#orgdcb014f">2.2. <code>dvisvgm</code> 进程条目</a></li>
+<li><a href="#org5693a16">2.3. 执行流程</a></li>
+</ul>
+</li>
+<li><a href="#org78c2fb9">3. 故障排查记录</a>
+<ul>
+<li><a href="#org94c4ac3">3.1. 报错一：=File '*.dvi' wasn't produced=</a></li>
+<li><a href="#orgfcab648">3.2. 报错二：=I can't find the format file 'latex.fmt'!=</a></li>
+<li><a href="#org1942b16">3.3. 报错三：=! LaTeX Error: File 'ulem.sty' not found.=</a></li>
+<li><a href="#org334eb4d">3.4. 定位缺包通用方法</a></li>
+</ul>
+</li>
+<li><a href="#org8ec65d2">4. 最终配置与使用</a>
+<ul>
+<li><a href="#orgb9963a4">4.1. 配置清单</a></li>
+<li><a href="#org6fafc0a">4.2. 快捷键</a></li>
+</ul>
+</li>
+<li><a href="#org63499a7">5. 排查方法论总结</a></li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-orgeb5f8b6" class="outline-2">
+<h2 id="orgeb5f8b6"><span class="section-number-2">1.</span> 目标与背景</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+在 Emacs 的 Org 文件中，希望将 LaTeX 数学片段（~$&hellip;$~、~\[...\]~、~\begin{...}~ 环境）渲染为图片直接预览。Org 默认用 <code>dvipng</code> 作为后端，本笔记改用 <code>dvisvgm</code> 输出 SVG，并记录过程中遇到的三个报错及其解决过程。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org738b372" class="outline-2">
+<h2 id="org738b372"><span class="section-number-2">2.</span> 基本配置</h2>
+<div class="outline-text-2" id="text-2">
+</div>
+<div id="outline-container-org6e10a94" class="outline-3">
+<h3 id="org6e10a94"><span class="section-number-3">2.1.</span> 设置默认进程</h3>
+<div class="outline-text-3" id="text-2-1">
+<p>
+核心：把 <code>dvisvgm</code> 设为默认预览进程（Org 默认是 =dvipng=）。<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-emacs-lisp"><code>(<span style="color: #79a8ff;">setq</span> org-preview-latex-default-process 'dvisvgm)
+</code></pre>
+</div>
+
+<p>
+新版 Org（9.7+）变量已改前缀，旧名仍可作为别名：<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-emacs-lisp"><code>(<span style="color: #79a8ff;">setq</span> org-latex-preview-default-process 'dvisvgm)
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgdcb014f" class="outline-3">
+<h3 id="orgdcb014f"><span class="section-number-3">2.2.</span> <code>dvisvgm</code> 进程条目</h3>
+<div class="outline-text-3" id="text-2-2">
+<p>
+<code>org-preview-latex-process-alist</code> 中 <code>dvisvgm</code> 的默认条目：<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-emacs-lisp"><code>(dvisvgm <span style="color: #feacd0;">:programs</span> (<span style="color: #2fafff;">"latex"</span> <span style="color: #2fafff;">"dvisvgm"</span>)
+         <span style="color: #feacd0;">:description</span> <span style="color: #2fafff;">"dvi &gt; svg"</span>
+         <span style="color: #feacd0;">:message</span> <span style="color: #2fafff;">"you need to install the programs: latex and dvisvgm."</span>
+         <span style="color: #feacd0;">:image-input-type</span> <span style="color: #2fafff;">"dvi"</span> <span style="color: #feacd0;">:image-output-type</span> <span style="color: #2fafff;">"svg"</span>
+         <span style="color: #feacd0;">:image-size-adjust</span> (1.7 . 1.5) <span style="color: #feacd0;">:latex-compiler</span>
+         (<span style="color: #2fafff;">"latex -interaction nonstopmode -output-directory %o %f"</span>)
+         <span style="color: #feacd0;">:image-converter</span>
+         (<span style="color: #2fafff;">"dvisvgm %f --no-fonts --exact-bbox --scale=%S --output=%O"</span>))
+</code></pre>
+</div>
+
+<p>
+该条目本身基本可用，真正需要修改的是 =:latex-compiler=（例如用到 minted / tikz externalize 时需加 =-shell-escape=）。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org5693a16" class="outline-3">
+<h3 id="org5693a16"><span class="section-number-3">2.3.</span> 执行流程</h3>
+<div class="outline-text-3" id="text-2-3">
+<p>
+预览的实际执行链为：<br>
+</p>
+
+<ol class="org-ol">
+<li>Org 生成临时 <code>/tmp/orgtexXXXX.tex</code> 文件。<br></li>
+<li><code>:latex-compiler</code> 运行 =latex=，产出 =.dvi=。<br></li>
+<li><code>:image-converter</code> 运行 <code>dvisvgm=，把 =.dvi</code> 转成 =.svg=。<br></li>
+<li>图片以 overlay 覆盖在源码上。<br></li>
+</ol>
+</div>
+</div>
+</div>
+<div id="outline-container-org78c2fb9" class="outline-2">
+<h2 id="org78c2fb9"><span class="section-number-2">3.</span> 故障排查记录</h2>
+<div class="outline-text-2" id="text-3">
+</div>
+<div id="outline-container-org94c4ac3" class="outline-3">
+<h3 id="org94c4ac3"><span class="section-number-3">3.1.</span> 报错一：=File '*.dvi' wasn't produced=</h3>
+<div class="outline-text-3" id="text-3-1">
+<p>
+完整报错：<br>
+</p>
+
+<pre class="example" id="org2e71118">
+File '/tmp/orgtexFigKxb.dvi' wasn't produced
+Please adjust 'dvisvgm' part of 'org-preview-latex-process-alist'
+</pre>
+
+<ul class="org-ul">
+<li>*含义*：此报错具有误导性，实际与 <code>dvisvgm</code> 无关。=.dvi= 由 <code>latex=（编译步骤）产生，=dvisvgm</code> 只做 dvi→svg 转换；=.dvi= 未生成时 <code>dvisvgm</code> 根本不会运行。<br></li>
+<li>*根源*：=org-compile-file= 运行完 <code>latex</code> 后检查源文件同目录下 <code>.dvi</code> 是否存在，不存在则抛出这条通用错误（见 =org-macs.el=）。<br></li>
+<li>*排查方法*：切换到 buffer <code>*Org Preview LaTeX Output*=，其中保存了 =latex</code> 的真实报错，是定位问题的关键。<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgfcab648" class="outline-3">
+<h3 id="orgfcab648"><span class="section-number-3">3.2.</span> 报错二：=I can't find the format file 'latex.fmt'!=</h3>
+<div class="outline-text-3" id="text-3-2">
+<p>
+完整日志（=*Org Preview LaTeX Output*= buffer）：<br>
+</p>
+
+<pre class="example" id="org6f8f484">
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=latex)
+ restricted \write18 enabled.
+
+kpathsea: Running mktexfmt latex.fmt
+mktexfmt: mktexfmt is using the following fmtutil.cnf files (in precedence order):
+mktexfmt:   /etc/texmf/web2c/fmtutil.cnf
+mktexfmt: mktexfmt is using the following fmtutil.cnf file for writing changes:
+mktexfmt:   /home/shyweeds/.texlive/texmf-config/web2c/fmtutil.cnf
+mktexfmt [INFO]: writing formats under /home/shyweeds/.texlive/texmf-var/web2c
+mktexfmt [INFO]: Did not find entry for byfmt=latex skipped
+mktexfmt [INFO]: not selected formats: 8
+mktexfmt [INFO]: total formats: 8
+mktexfmt [INFO]: executable location: /usr/bin/mktexfmt
+mktexfmt [INFO]: exiting with status 0
+I can't find the format file `latex.fmt'!
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=latex)
+ restricted \write18 enabled.
+
+kpathsea: Running mktexfmt latex.fmt
+mktexfmt: mktexfmt is using the following fmtutil.cnf files (in precedence order):
+mktexfmt:   /etc/texmf/web2c/fmtutil.cnf
+mktexfmt: mktexfmt is using the following fmtutil.cnf file for writing changes:
+mktexfmt:   /home/shyweeds/.texlive/texmf-config/web2c/fmtutil.cnf
+mktexfmt [INFO]: writing formats under /home/shyweeds/.texlive/texmf-var/web2c
+mktexfmt [INFO]: Did not find entry for byfmt=latex skipped
+mktexfmt [INFO]: not selected formats: 8
+mktexfmt [INFO]: total formats: 8
+mktexfmt [INFO]: executable location: /usr/bin/mktexfmt
+mktexfmt [INFO]: exiting with status 0
+I can't find the format file `latex.fmt'!
+</pre>
+
+<ul class="org-ul">
+<li>*含义*：=latex= 二进制启动时需加载预编译的格式文件 <code>latex.fmt=，找不到则直接退出，导致 =.dvi</code> 未生成。<br></li>
+<li>*根源*：TeX Live 安装不完整。只装了 <code>texlive-bin</code> 和 <code>texlive-basic=，其中 =latex</code> 格式并未注册（=fmtutil.cnf= 里只有 8 个基础格式）。=latex= 格式及 LaTeX 基础宏包由 <code>texlive-latex</code> 提供。<br></li>
+<li><p>
+*验证*：<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-shell"><code><span style="color: #d09dc0;">pacman</span> -Qs texlive        <span style="color: #ef8386;"># &#26597;&#30475;&#24050;&#23433;&#35013;&#30340; texlive &#21253;</span>
+<span style="color: #d09dc0;">kpsewhich</span> latex.fmt       <span style="color: #ef8386;"># &#26597;&#25214;&#26684;&#24335;&#25991;&#20214;&#65288;&#26410;&#23433;&#35013;&#26102;&#26080;&#36755;&#20986;&#65289;</span>
+</code></pre>
+</div></li>
+<li><p>
+*修复*：<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-shell"><code><span style="color: #d09dc0;">sudo</span> pacman -S texlive-latex texlive-latexrecommended
+</code></pre>
+</div>
+<p>
+<code>texlive-latex</code> 提供 <code>latex.fmt</code> 与基础宏包；=texlive-latexrecommended= 提供 <code>amsmath=、=amssymb</code> 等（Org 默认导言区会用到）。<br>
+</p></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org1942b16" class="outline-3">
+<h3 id="org1942b16"><span class="section-number-3">3.3.</span> 报错三：=! LaTeX Error: File 'ulem.sty' not found.=</h3>
+<div class="outline-text-3" id="text-3-3">
+<p>
+完整日志（=*Org Preview LaTeX Output*= buffer）：<br>
+</p>
+
+<pre class="example" id="orge1dcfed">
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=latex)
+ restricted \write18 enabled.
+entering extended mode
+(../../../../../tmp//../../../../../tmp/orgtexMOAmRm.tex
+LaTeX2e &lt;2025-11-01&gt;
+L3 programming layer &lt;2026-01-19&gt;
+(/usr/share/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2025/01/22 v1.4n Standard LaTeX document class
+(/usr/share/texmf-dist/tex/latex/base/size10.clo))
+(/usr/share/texmf-dist/tex/latex/graphics/color.sty
+(/usr/share/texmf-dist/tex/latex/graphics-cfg/color.cfg)
+(/usr/share/texmf-dist/tex/latex/graphics-def/dvips.def)
+(/usr/share/texmf-dist/tex/latex/graphics/dvipsnam.def)
+(/usr/share/texmf-dist/tex/latex/graphics/mathcolor.ltx))
+(/usr/share/texmf-dist/tex/latex/base/inputenc.sty)
+(/usr/share/texmf-dist/tex/latex/base/fontenc.sty)
+(/usr/share/texmf-dist/tex/latex/graphics/graphicx.sty
+(/usr/share/texmf-dist/tex/latex/graphics/keyval.sty)
+(/usr/share/texmf-dist/tex/latex/graphics/graphics.sty
+(/usr/share/texmf-dist/tex/latex/graphics/trig.sty)
+(/usr/share/texmf-dist/tex/latex/graphics-cfg/graphics.cfg)))
+
+! LaTeX Error: File `ulem.sty' not found.
+
+Type X to quit or &lt;RETURN&gt; to proceed,
+or enter new name. (Default extension: sty)
+
+Enter file name: 
+! Emergency stop.
+&lt;read *&gt; 
+         
+l.10 \usepackage
+                {amsmath}^^M
+No pages of output.
+Transcript written on ../../../../../tmp//orgtexMOAmRm.log.
+</pre>
+
+<ul class="org-ul">
+<li>*含义*：LaTeX 编译能跑通格式与基础宏包了，但缺宏包 =ulem=。<br></li>
+<li>*根源*：=ulem= 是 Org *默认导言区*就会加载的宏包（=org.el= 中 <code>org-latex-default-packages-alist=，用于下划线/删除线）。它是「通用」宏包，Arch 将其归在 =texlive-plaingeneric</code> 中，不属于任何 <code>texlive-latex*</code> 组，因此单独缺失。<br></li>
+<li><p>
+*修复*：<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-shell"><code><span style="color: #d09dc0;">sudo</span> pacman -S texlive-plaingeneric
+</code></pre>
+</div></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org334eb4d" class="outline-3">
+<h3 id="org334eb4d"><span class="section-number-3">3.4.</span> 定位缺包通用方法</h3>
+<div class="outline-text-3" id="text-3-4">
+<p>
+若后续再报其他 <code>*.sty</code> 缺失，用 <code>pacman -F</code> 即可查到该文件属于哪个包：<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"><code><span style="color: #d09dc0;">pacman</span> -F ulem.sty
+</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org8ec65d2" class="outline-2">
+<h2 id="org8ec65d2"><span class="section-number-2">4.</span> 最终配置与使用</h2>
+<div class="outline-text-2" id="text-4">
+</div>
+<div id="outline-container-orgb9963a4" class="outline-3">
+<h3 id="orgb9963a4"><span class="section-number-3">4.1.</span> 配置清单</h3>
+<div class="outline-text-3" id="text-4-1">
+<div class="org-src-container">
+<pre class="src src-emacs-lisp"><code><span style="color: #ef8386;">;; </span><span style="color: #ef8386;">1. &#40664;&#35748;&#36827;&#31243;&#35774;&#20026; dvisvgm
+</span>(<span style="color: #79a8ff;">setq</span> org-preview-latex-default-process 'dvisvgm)
+
+<span style="color: #ef8386;">;; </span><span style="color: #ef8386;">2. &#65288;&#21487;&#36873;&#65289;&#38656;&#35201; shell-escape &#26102;&#35843;&#25972; latex-compiler
+</span>(<span style="color: #79a8ff;">with-eval-after-load</span> 'org
+  (<span style="color: #79a8ff;">let</span> ((cell (assoc 'dvisvgm org-preview-latex-process-alist)))
+    (<span style="color: #79a8ff;">when</span> cell
+      (setcdr cell
+              (plist-put (cdr cell) <span style="color: #feacd0;">:latex-compiler</span>
+                         '(<span style="color: #2fafff;">"latex -interaction nonstopmode -shell-escape -output-directory %o %f"</span>))))))
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org6fafc0a" class="outline-3">
+<h3 id="org6fafc0a"><span class="section-number-3">4.2.</span> 快捷键</h3>
+<div class="outline-text-3" id="text-4-2">
+<p>
+<code>C-c C-x C-l</code> 绑定 ~org-latex-preview~，前缀参数语义：<br>
+</p>
+
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">按键</th>
+<th scope="col" class="org-left">作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left"><code>C-c C-x C-l</code></td>
+<td class="org-left">切换光标处片段；否则渲染当前 section</td>
+</tr>
+
+<tr>
+<td class="org-left">选中区域 + <code>C-c C-x C-l</code></td>
+<td class="org-left">渲染区域内片段</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>C-u C-c C-x C-l</code></td>
+<td class="org-left">清除当前 section 预览</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>C-u C-u C-c C-x C-l</code></td>
+<td class="org-left">渲染整个 buffer 全部片段</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>C-u C-u C-u C-c C-x C-l</code></td>
+<td class="org-left">清除整个 buffer 预览</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div id="outline-container-org63499a7" class="outline-2">
+<h2 id="org63499a7"><span class="section-number-2">5.</span> 排查方法论总结</h2>
+<div class="outline-text-2" id="text-5">
+<ol class="org-ol">
+<li>*看真实报错*：切换到 <code>*Org Preview LaTeX Output*</code> buffer，获取 <code>latex</code> 失败的具体原因。<br></li>
+<li>*手动复现*：用最小 <code>.tex</code> 手动执行 <code>latex -interaction nonstopmode ...</code> 并读 =.log=。<br></li>
+<li>*区分范围*：预览一个最简单的 ~$x$~，成功则问题在具体片段/导言区；失败则问题在环境。<br></li>
+<li>*定位缺包*：=pacman -F &lt;文件名&gt;= 查归属包，逐个补齐 texlive 组件。<br></li>
+</ol>
+
+<p>
+核心结论：=dvisvgm= 的报错往往只是表象，真正的失败在 <code>latex</code> 编译步骤；先看 <code>*Org Preview LaTeX Output*</code> 即可快速定位。<br>
+</p>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

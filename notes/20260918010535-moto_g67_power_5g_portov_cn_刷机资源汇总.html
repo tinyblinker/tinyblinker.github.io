@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Moto_G67_Power_5G_portov_cn_刷机资源汇总</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-10-15 Thu 12:08</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">Moto_G67_Power_5G_portov_cn_刷机资源汇总</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#org143225f">1. 设备信息</a>
+<ul>
+<li><a href="#orgd337192">1.1. 目标设备</a></li>
+</ul>
+</li>
+<li><a href="#org4eff9dd">2. 重要注意事项</a>
+<ul>
+<li><a href="#org6e1dfda">2.1. 型号与 codename</a></li>
+<li><a href="#org2cc8231">2.2. A/B 双槽</a></li>
+<li><a href="#org7a20c38">2.3. Anti-Rollback</a></li>
+<li><a href="#org8f35594">2.4. 数据清除</a></li>
+</ul>
+</li>
+<li><a href="#org38a1235">3. 一,Device Tree(设备树)</a>
+<ul>
+<li><a href="#orgee6a461">3.1. 1. Portov 主设备树:parrot-66-dev</a></li>
+<li><a href="#org549983b">3.2. 2. Quartz750 Portov Device Tree(WIP)</a></li>
+<li><a href="#org8496b4b">3.3. 3. Motorola-Parrot 同名仓库</a></li>
+</ul>
+</li>
+<li><a href="#orgc044c30">4. 二,SM7435 Common / 平台公共资源</a>
+<ul>
+<li><a href="#orgec1ee7c">4.1. 1. SM7435 Common Device Tree</a></li>
+<li><a href="#org793dcae">4.2. 2. SM7435 Kernel</a></li>
+<li><a href="#orgd86a6fc">4.3. 3. SM7435 Device Trees</a></li>
+<li><a href="#org22b0fd7">4.4. 4. SM7435 Kernel Modules</a></li>
+</ul>
+</li>
+<li><a href="#orge77b26c">5. 三,Portov 专用 Kernel</a>
+<ul>
+<li><a href="#orgf9e1675">5.1. 1. parrot-66-dev Portov Kernel</a></li>
+<li><a href="#org83f10b4">5.2. 2. Quartz750 Portov Kernel</a></li>
+</ul>
+</li>
+<li><a href="#org50807b7">6. 四,Vendor / Proprietary Blobs</a>
+<ul>
+<li><a href="#org922db1a">6.1. 1. Quartz750 Portov Vendor</a></li>
+<li><a href="#org059f1b8">6.2. 2. parrot-66-dev Portov Vendor</a></li>
+</ul>
+</li>
+<li><a href="#org76c68e8">7. 五,TWRP</a>
+<ul>
+<li><a href="#org8d13378">7.1. 1. Portov TWRP 源码</a></li>
+<li><a href="#orgedee3e5">7.2. 2. TWRP 3.7.1-12 Release</a></li>
+</ul>
+</li>
+<li><a href="#org4e4bf64">8. 六,第三方 ROM</a>
+<ul>
+<li><a href="#org1ffb79a">8.1. 1. Hello UI / Android 17 Port</a></li>
+<li><a href="#orge2a2748">8.2. 2. Hello UI v1.6</a></li>
+<li><a href="#orgf39d516">8.3. 3. Hello UI v1.6 Fastboot Package</a></li>
+<li><a href="#org08a17bc">8.4. 4. Hello UI Window Blur Add-on</a></li>
+</ul>
+</li>
+<li><a href="#org913f5a0">9. 七,其他 ROM 搜索结果</a></li>
+<li><a href="#org4cfc211">10. 八,LineageOS 源码构建链</a></li>
+<li><a href="#orgf72e5b0">11. 九,社区 / 讨论区</a>
+<ul>
+<li><a href="#org75da782">11.1. 4PDA</a></li>
+<li><a href="#org231f30f">11.2. XDA</a></li>
+</ul>
+</li>
+<li><a href="#org36d2375">12. 十,ROM / Recovery 搜索关键词</a></li>
+<li><a href="#org380f3f5">13. 十一,目前值得保留的核心链接</a>
+<ul>
+<li><a href="#org54105bc">13.1. Device Tree</a></li>
+<li><a href="#org5058380">13.2. Kernel</a></li>
+<li><a href="#org0d55e4a">13.3. Common</a></li>
+<li><a href="#org125fd18">13.4. Vendor</a></li>
+<li><a href="#orgfbc74b1">13.5. TWRP</a></li>
+<li><a href="#org315e949">13.6. Hello UI ROM</a></li>
+<li><a href="#orgadeff83">13.7. 社区</a></li>
+</ul>
+</li>
+<li><a href="#org0f19be2">14. 十二,建议的研究顺序</a></li>
+<li><a href="#org29bfe6b">15. 十三,风险记录</a></li>
+<li><a href="#orgf1d9aad">16. 十四,截至日期</a></li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-org143225f" class="outline-2">
+<h2 id="org143225f"><span class="section-number-2">1.</span> 设备信息</h2>
+<div class="outline-text-2" id="text-1">
+</div>
+<div id="outline-container-orgd337192" class="outline-3">
+<h3 id="orgd337192"><span class="section-number-3">1.1.</span> 目标设备</h3>
+<div class="outline-text-3" id="text-1-1">
+<ul class="org-ul">
+<li>商用名称:Motorola moto g67 power 5G<br></li>
+<li>中国对应机型:Moto G100 (2025)<br></li>
+<li>Codename: <code>portov</code><br></li>
+<li>SoC:Qualcomm Snapdragon 7s Gen 2 / SM7435<br></li>
+<li>shipped Android:Android 15<br></li>
+<li>典型型号:XT2533-3 / XT2533-4 / XT2533-5<br></li>
+<li>本机重点型号: <code>XT2533-4</code> (中国版 Moto G100 2025)<br></li>
+<li>电池:7000 mAh<br></li>
+<li>屏幕:6.7" / 120 Hz / 1080x2400<br></li>
+</ul>
+
+<p>
+参考:<br>
+</p>
+<ul class="org-ul">
+<li><a href="https://github.com/parrot-66-dev/android_device_motorola_portov">parrot-66-dev/android_device_motorola_portov</a><br></li>
+<li><a href="https://4pda.to/forum/index.php?showtopic=1117473">4PDA:Motorola G100 / G67 Power (2025)</a><br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-org4eff9dd" class="outline-2">
+<h2 id="org4eff9dd"><span class="section-number-2">2.</span> 重要注意事项</h2>
+<div class="outline-text-2" id="text-2">
+</div>
+<div id="outline-container-org6e1dfda" class="outline-3">
+<h3 id="org6e1dfda"><span class="section-number-3">2.1.</span> 型号与 codename</h3>
+<div class="outline-text-3" id="text-2-1">
+<p>
+<code>XT2533-4</code> 属于 <code>portov</code> 家族,因此在搜索第三方开发时应优先使用以下关键词:<br>
+</p>
+
+<pre class="example" id="orga1f8a2c">
+portov
+Moto G67 Power 5G
+Moto G100 2025
+XT2533-4
+XT2533-3
+XT2533-5
+SM7435
+Snapdragon 7s Gen 2
+</pre>
+
+<p>
+不要把 2021 年的老款 Moto G100 / Edge S 与 2025 年的 Moto G100 / G67 Power 混淆.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org2cc8231" class="outline-3">
+<h3 id="org2cc8231"><span class="section-number-3">2.2.</span> A/B 双槽</h3>
+<div class="outline-text-3" id="text-2-2">
+<p>
+这台设备使用 A/B seamless update 架构.第三方 ROM / recovery 的刷写说明经常要求检查并同步两个 slot.<br>
+</p>
+
+<p>
+尤其注意:<br>
+</p>
+<ul class="org-ul">
+<li>不要因为某个分区名称或镜像“看起来一样”就跨版本,跨区域直接刷.<br></li>
+<li>中国 RETCN 与 RETIN/RETEU/RETID 等渠道固件要单独核对.<br></li>
+<li>使用自定义 ROM 时不要重新锁定 bootloader.<br></li>
+<li>在动 boot / vendor_boot / dtbo / vbmeta / super 前,始终准备好完整官方救砖固件.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org7a20c38" class="outline-3">
+<h3 id="org7a20c38"><span class="section-number-3">2.3.</span> Anti-Rollback</h3>
+<div class="outline-text-3" id="text-2-3">
+<p>
+公开的 portov ROM 项目中已经出现关于 ARB(Anti-Rollback)Index 的处理说明.不同 firmware 基线之间不能只看 Android 大版本,还需要检查 bootloader / ARB / CID 等状态.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org8f35594" class="outline-3">
+<h3 id="org8f35594"><span class="section-number-3">2.4.</span> 数据清除</h3>
+<div class="outline-text-3" id="text-2-4">
+<p>
+第三方 ROM 特别是跨版本/跨厂商移植 ROM 常要求 Format Data.不同项目的具体要求不同,以对应项目 README 为准.<br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-org38a1235" class="outline-2">
+<h2 id="org38a1235"><span class="section-number-2">3.</span> 一,Device Tree(设备树)</h2>
+<div class="outline-text-2" id="text-3">
+</div>
+<div id="outline-container-orgee6a461" class="outline-3">
+<h3 id="orgee6a461"><span class="section-number-3">3.1.</span> 1. Portov 主设备树:parrot-66-dev</h3>
+<div class="outline-text-3" id="text-3-1">
+<p>
+<a href="https://github.com/parrot-66-dev/android_device_motorola_portov">GitHub:parrot-66-dev/android_device_motorola_portov</a><br>
+</p>
+
+<p>
+这是目前找到的较完整的 portov 专用 Lineage 风格 device tree.<br>
+</p>
+
+<p>
+主要内容包括:<br>
+</p>
+<ul class="org-ul">
+<li><code>Android.bp</code><br></li>
+<li><code>AndroidProducts.mk</code><br></li>
+<li><code>BoardConfig.mk</code><br></li>
+<li><code>device.mk</code><br></li>
+<li><code>lineage_portov.mk</code><br></li>
+<li><code>extract-files.py</code><br></li>
+<li><code>proprietary-files.txt</code><br></li>
+<li><code>proprietary-firmware.txt</code><br></li>
+<li><code>rootdir/</code><br></li>
+<li>overlays / configs / keylayout<br></li>
+</ul>
+
+<p>
+仓库信息:<br>
+</p>
+<ul class="org-ul">
+<li>默认分支:~new~<br></li>
+<li>2026-09-11 仍有提交<br></li>
+<li>项目 README 明确标注 Moto G67 Power 5G / codename <code>portov</code><br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org549983b" class="outline-3">
+<h3 id="org549983b"><span class="section-number-3">3.2.</span> 2. Quartz750 Portov Device Tree(WIP)</h3>
+<div class="outline-text-3" id="text-3-2">
+<p>
+<a href="https://github.com/Quartz750/android_device_motorola_portov">GitHub:Quartz750/android_device_motorola_portov</a><br>
+</p>
+
+<p>
+说明:<br>
+</p>
+<ul class="org-ul">
+<li>描述:WIP<br></li>
+<li>默认分支:~test~<br></li>
+<li>更像测试/开发中的设备树,不应与完整主树混为一谈.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org8496b4b" class="outline-3">
+<h3 id="org8496b4b"><span class="section-number-3">3.3.</span> 3. Motorola-Parrot 同名仓库</h3>
+<div class="outline-text-3" id="text-3-3">
+<p>
+<a href="https://github.com/Motorola-Parrot/android_device_motorola_portov">GitHub:Motorola-Parrot/android_device_motorola_portov</a><br>
+</p>
+
+<p>
+当前公开仓库曾显示为近乎空仓库,不能因为名字相同就当作完整 device tree 使用.<br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-orgc044c30" class="outline-2">
+<h2 id="orgc044c30"><span class="section-number-2">4.</span> 二,SM7435 Common / 平台公共资源</h2>
+<div class="outline-text-2" id="text-4">
+</div>
+<div id="outline-container-orgec1ee7c" class="outline-3">
+<h3 id="orgec1ee7c"><span class="section-number-3">4.1.</span> 1. SM7435 Common Device Tree</h3>
+<div class="outline-text-3" id="text-4-1">
+<p>
+<a href="https://github.com/Motorola-Parrot/android_device_motorola_sm7435-common">GitHub:Motorola-Parrot/android_device_motorola_sm7435-common</a><br>
+</p>
+
+<p>
+这是 Snapdragon 7s Gen 2 / SM7435 平台的公共设备树基础.<br>
+</p>
+
+<p>
+当前公开分支:<br>
+</p>
+<ul class="org-ul">
+<li><code>lineage-23.0</code><br></li>
+</ul>
+
+<p>
+用途:<br>
+</p>
+<ul class="org-ul">
+<li>为 portov 等同平台设备共享公共 Android / HAL / build 配置.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org793dcae" class="outline-3">
+<h3 id="org793dcae"><span class="section-number-3">4.2.</span> 2. SM7435 Kernel</h3>
+<div class="outline-text-3" id="text-4-2">
+<p>
+<a href="https://github.com/Motorola-Parrot/android_kernel_motorola_sm7435">GitHub:Motorola-Parrot/android_kernel_motorola_sm7435</a><br>
+</p>
+
+<p>
+这是 SM7435 平台 kernel tree.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-orgd86a6fc" class="outline-3">
+<h3 id="orgd86a6fc"><span class="section-number-3">4.3.</span> 3. SM7435 Device Trees</h3>
+<div class="outline-text-3" id="text-4-3">
+<p>
+<a href="https://github.com/Motorola-Parrot/android_kernel_motorola_sm7435-devicetrees">GitHub:Motorola-Parrot/android_kernel_motorola_sm7435-devicetrees</a><br>
+</p>
+
+<p>
+用于 kernel / DTB / device tree 相关内容.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org22b0fd7" class="outline-3">
+<h3 id="org22b0fd7"><span class="section-number-3">4.4.</span> 4. SM7435 Kernel Modules</h3>
+<div class="outline-text-3" id="text-4-4">
+<p>
+<a href="https://github.com/Motorola-Parrot/android_kernel_motorola_sm7435-modules">GitHub:Motorola-Parrot/android_kernel_motorola_sm7435-modules</a><br>
+</p>
+
+<p>
+用于平台 kernel modules.<br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-orge77b26c" class="outline-2">
+<h2 id="orge77b26c"><span class="section-number-2">5.</span> 三,Portov 专用 Kernel</h2>
+<div class="outline-text-2" id="text-5">
+</div>
+<div id="outline-container-orgf9e1675" class="outline-3">
+<h3 id="orgf9e1675"><span class="section-number-3">5.1.</span> 1. parrot-66-dev Portov Kernel</h3>
+<div class="outline-text-3" id="text-5-1">
+<p>
+<a href="https://github.com/parrot-66-dev/android_device_motorola_portov-kernel">GitHub:parrot-66-dev/android_device_motorola_portov-kernel</a><br>
+</p>
+
+<p>
+信息:<br>
+</p>
+<ul class="org-ul">
+<li>默认分支: <code>lineage-22.2</code><br></li>
+<li>2026-08-25 有提交<br></li>
+<li>约 213 MB<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org83f10b4" class="outline-3">
+<h3 id="org83f10b4"><span class="section-number-3">5.2.</span> 2. Quartz750 Portov Kernel</h3>
+<div class="outline-text-3" id="text-5-2">
+<p>
+<a href="https://github.com/Quartz750/android_device_motorola_portov-kernel">GitHub:Quartz750/android_device_motorola_portov-kernel</a><br>
+</p>
+
+<p>
+可与上面的 kernel tree 互相对照,尤其适合查看开发分支差异.<br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-org50807b7" class="outline-2">
+<h2 id="org50807b7"><span class="section-number-2">6.</span> 四,Vendor / Proprietary Blobs</h2>
+<div class="outline-text-2" id="text-6">
+</div>
+<div id="outline-container-org922db1a" class="outline-3">
+<h3 id="org922db1a"><span class="section-number-3">6.1.</span> 1. Quartz750 Portov Vendor</h3>
+<div class="outline-text-3" id="text-6-1">
+<p>
+<a href="https://github.com/Quartz750/android_vendor_motorola_portov">GitHub:Quartz750/android_vendor_motorola_portov</a><br>
+</p>
+
+<p>
+仓库描述明确写有:<br>
+</p>
+<ul class="org-ul">
+<li>vendor blobs for Motorola Moto G67 Power<br></li>
+<li>RETCN:Moto G100 (2025)<br></li>
+</ul>
+
+<p>
+默认分支:<br>
+<code>RETCN_W1VT36H.1_51_5</code><br>
+</p>
+</div>
+</div>
+<div id="outline-container-org059f1b8" class="outline-3">
+<h3 id="org059f1b8"><span class="section-number-3">6.2.</span> 2. parrot-66-dev Portov Vendor</h3>
+<div class="outline-text-3" id="text-6-2">
+<p>
+<a href="https://github.com/parrot-66-dev/android_vendor_motorola_portov">GitHub:parrot-66-dev/android_vendor_motorola_portov</a><br>
+</p>
+
+<p>
+用于 device tree / Lineage 构建所需的 proprietary vendor 内容.<br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-org76c68e8" class="outline-2">
+<h2 id="org76c68e8"><span class="section-number-2">7.</span> 五,TWRP</h2>
+<div class="outline-text-2" id="text-7">
+</div>
+<div id="outline-container-org8d13378" class="outline-3">
+<h3 id="org8d13378"><span class="section-number-3">7.1.</span> 1. Portov TWRP 源码</h3>
+<div class="outline-text-3" id="text-7-1">
+<p>
+<a href="https://github.com/Quartz750/android_device_motorola_portov_twrp">GitHub:Quartz750/android_device_motorola_portov_twrp</a><br>
+</p>
+
+<p>
+信息:<br>
+</p>
+<ul class="org-ul">
+<li>描述:TWRP for motorola g67 power (moto g100)<br></li>
+<li>分支: <code>twrp-12.1</code><br></li>
+<li>2026-05-28 创建<br></li>
+<li>2026-09-10 仍有仓库更新<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgedee3e5" class="outline-3">
+<h3 id="orgedee3e5"><span class="section-number-3">7.2.</span> 2. TWRP 3.7.1-12 Release</h3>
+<div class="outline-text-3" id="text-7-2">
+<p>
+<a href="https://github.com/Quartz750/android_device_motorola_portov_twrp/releases/download/notag/recovery.img">直接下载:recovery.img</a><br>
+</p>
+
+<p>
+对应 Release:<br>
+</p>
+<ul class="org-ul">
+<li>名称:TWRP_3.7.1_12_motorola_g67_power<br></li>
+<li>发布时间:2026-06-03<br></li>
+<li>镜像大小:128 MiB<br></li>
+<li>SHA-256:<br>
+<code>5671d4761020e61eb9c6ccf58309e5a06a5b464e57e21f69fccf2e50923c4346</code><br></li>
+</ul>
+
+<p>
+Release 页面:<br>
+<a href="https://github.com/Quartz750/android_device_motorola_portov_twrp/releases">GitHub Releases:Portov TWRP</a><br>
+</p>
+
+<p>
+Release note:<br>
+</p>
+<ul class="org-ul">
+<li>修复 super partition resize<br></li>
+</ul>
+
+<p>
+注意:<br>
+</p>
+<ul class="org-ul">
+<li>recovery.img 是第三方 recovery 成品,不等同于官方 recovery.<br></li>
+<li>具体应刷到哪个 recovery slot / partition,需要结合当前设备的分区布局和项目说明判断.<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-org4e4bf64" class="outline-2">
+<h2 id="org4e4bf64"><span class="section-number-2">8.</span> 六,第三方 ROM</h2>
+<div class="outline-text-2" id="text-8">
+</div>
+<div id="outline-container-org1ffb79a" class="outline-3">
+<h3 id="org1ffb79a"><span class="section-number-3">8.1.</span> 1. Hello UI / Android 17 Port</h3>
+<div class="outline-text-3" id="text-8-1">
+<p>
+<a href="https://github.com/cromaguy/Portov-Hello-UI-Port-Project">GitHub:Portov-Hello-UI-Port-Project</a><br>
+</p>
+
+<p>
+这是目前找到的最明确的 portov 第三方 ROM 成品项目之一.<br>
+</p>
+
+<p>
+项目定位:<br>
+</p>
+<ul class="org-ul">
+<li>Motorola Moto G67 Power 5G (<code>portov</code>)<br></li>
+<li>Android 17 / Hello UI<br></li>
+<li>来源:Moto G57 (<code>mumba</code>) 的官方 Motorola Hello UI 固件<br></li>
+<li>再适配到 portov<br></li>
+</ul>
+
+<p>
+项目作者:<br>
+</p>
+<ul class="org-ul">
+<li>Anjishnu<br></li>
+</ul>
+
+<p>
+硬件 / 平台:<br>
+</p>
+<ul class="org-ul">
+<li>SM7435<br></li>
+<li>Portov 原生 overlays<br></li>
+<li>Portov camera pipeline<br></li>
+<li>Portov vendor / driver 基础<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orge2a2748" class="outline-3">
+<h3 id="orge2a2748"><span class="section-number-3">8.2.</span> 2. Hello UI v1.6</h3>
+<div class="outline-text-3" id="text-8-2">
+<p>
+Release:<br>
+<a href="https://github.com/cromaguy/Portov-Hello-UI-Port-Project/releases">GitHub Releases:Hello UI Port</a><br>
+</p>
+
+<p>
+v1.6 发布日期:<br>
+2026-09-12<br>
+</p>
+
+<p>
+项目描述的 v1.6 重点:<br>
+</p>
+<ul class="org-ul">
+<li>Android 16 hardware base<br></li>
+<li>Kernel 6.6.118 GKI<br></li>
+<li>Portov vendor / vendor_dlkm / system_dlkm<br></li>
+<li>Android 17 Hello UI userspace<br></li>
+<li>窗口级 background blur<br></li>
+<li>Universal / RETIN / 多区域适配<br></li>
+<li>ARB 相关修正<br></li>
+</ul>
+
+<p>
+特别注意:<br>
+这个项目虽然名为“Android 17 Hello UI”,其 v1.6 公开说明又使用了 Portov Android 16 hardware base.因此更准确理解为:<br>
+Android 17 Hello UI userspace + Portov Android 16 hardware/vendor base 的 experimental composite port.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-orgf39d516" class="outline-3">
+<h3 id="orgf39d516"><span class="section-number-3">8.3.</span> 3. Hello UI v1.6 Fastboot Package</h3>
+<div class="outline-text-3" id="text-8-3">
+<p>
+<a href="https://pixeldrain.com/u/3tD6dd9Z">Pixeldrain:Hello UI Port v1.6 Fastboot Package</a><br>
+</p>
+
+<p>
+公开说明:<br>
+</p>
+<ul class="org-ul">
+<li>大约 5.7 GB<br></li>
+<li>面向 PC / Fastboot / FastbootD<br></li>
+</ul>
+
+<p>
+公开项目中列出的主要镜像类型包括:<br>
+</p>
+<ul class="org-ul">
+<li><code>boot_permissive.img</code><br></li>
+<li><code>boot.img</code><br></li>
+<li><code>init_boot.img</code><br></li>
+<li><code>vendor_boot.img</code><br></li>
+<li><code>dtbo.img</code><br></li>
+<li><code>recovery.img</code><br></li>
+<li><code>vbmeta.img</code><br></li>
+<li><code>vbmeta_system.img</code><br></li>
+<li><code>vendor.img</code><br></li>
+<li><code>vendor_dlkm.img</code><br></li>
+<li><code>system_dlkm.img</code><br></li>
+<li><code>system.img</code><br></li>
+<li><code>system_ext.img</code><br></li>
+<li><code>product.img</code><br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org08a17bc" class="outline-3">
+<h3 id="org08a17bc"><span class="section-number-3">8.4.</span> 4. Hello UI Window Blur Add-on</h3>
+<div class="outline-text-3" id="text-8-4">
+<p>
+<a href="https://pixeldrain.com/u/uCDVaVy8">Pixeldrain:Window-Level Native Blurs Add-on</a><br>
+</p>
+
+<p>
+用途:<br>
+</p>
+<ul class="org-ul">
+<li>窗口级背景模糊<br></li>
+<li>Quick Settings / 音量滑块 / 电源菜单 / Launcher 等背景 blur<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-org913f5a0" class="outline-2">
+<h2 id="org913f5a0"><span class="section-number-2">9.</span> 七,其他 ROM 搜索结果</h2>
+<div class="outline-text-2" id="text-9">
+<p>
+截至 2026-09-18,未找到足够可靠,可公开核实的以下 portov 专用成熟成品:<br>
+</p>
+
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">ROM</th>
+<th scope="col" class="org-left">公开成品状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">LineageOS</td>
+<td class="org-left">有 device tree / kernel / vendor 源码基础;未找到成熟公开成品</td>
+</tr>
+
+<tr>
+<td class="org-left">PixelOS</td>
+<td class="org-left">未找到可核实的 portov 成品</td>
+</tr>
+
+<tr>
+<td class="org-left">crDroid</td>
+<td class="org-left">未找到可核实的 portov 成品</td>
+</tr>
+
+<tr>
+<td class="org-left">Evolution X</td>
+<td class="org-left">未找到可核实的 portov 成品</td>
+</tr>
+
+<tr>
+<td class="org-left">ArrowOS</td>
+<td class="org-left">未找到可核实的 portov 成品</td>
+</tr>
+
+<tr>
+<td class="org-left">RisingOS</td>
+<td class="org-left">未找到可核实的 portov 成品</td>
+</tr>
+
+<tr>
+<td class="org-left">DerpFest</td>
+<td class="org-left">未找到可核实的 portov 成品</td>
+</tr>
+
+<tr>
+<td class="org-left">Project Elixir</td>
+<td class="org-left">未找到可核实的 portov 成品</td>
+</tr>
+
+<tr>
+<td class="org-left">AncientOS</td>
+<td class="org-left">未找到可核实的 portov 成品</td>
+</tr>
+
+<tr>
+<td class="org-left">Pixel Experience</td>
+<td class="org-left">未找到可核实的 portov 成品</td>
+</tr>
+
+<tr>
+<td class="org-left">OmniROM</td>
+<td class="org-left">未找到可核实的 portov 成品</td>
+</tr>
+</tbody>
+</table>
+
+<p>
+备注:<br>
+“未找到公开成品”不等于 Telegram / 私人测试群中绝对不存在测试包,只表示目前没有足够可靠的公开页面可验证.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org4cfc211" class="outline-2">
+<h2 id="org4cfc211"><span class="section-number-2">10.</span> 八,LineageOS 源码构建链</h2>
+<div class="outline-text-2" id="text-10">
+<p>
+推荐关注以下仓库:<br>
+</p>
+
+<ol class="org-ol">
+<li>Device Tree:<br></li>
+</ol>
+<p>
+<a href="https://github.com/parrot-66-dev/android_device_motorola_portov">portov device tree</a><br>
+</p>
+
+<ol class="org-ol">
+<li>Common Tree:<br></li>
+</ol>
+<p>
+<a href="https://github.com/Motorola-Parrot/android_device_motorola_sm7435-common">SM7435 common</a><br>
+</p>
+
+<ol class="org-ol">
+<li>Kernel:<br></li>
+</ol>
+<p>
+<a href="https://github.com/Motorola-Parrot/android_kernel_motorola_sm7435">SM7435 kernel</a><br>
+</p>
+
+<ol class="org-ol">
+<li>Device Trees:<br></li>
+</ol>
+<p>
+<a href="https://github.com/Motorola-Parrot/android_kernel_motorola_sm7435-devicetrees">SM7435 device trees</a><br>
+</p>
+
+<ol class="org-ol">
+<li>Kernel Modules:<br></li>
+</ol>
+<p>
+<a href="https://github.com/Motorola-Parrot/android_kernel_motorola_sm7435-modules">SM7435 modules</a><br>
+</p>
+
+<ol class="org-ol">
+<li>Portov vendor:<br></li>
+</ol>
+<p>
+<a href="https://github.com/Quartz750/android_vendor_motorola_portov">Portov vendor blobs</a><br>
+</p>
+
+<p>
+整体关系:<br>
+</p>
+
+<pre class="example" id="org776248f">
+device/motorola/portov
+        │
+        ├── sm7435-common
+        │
+        ├── portov vendor blobs
+        │
+        └── sm7435 kernel / DT / modules
+                 │
+                 └── LineageOS 23.x build
+</pre>
+</div>
+</div>
+<div id="outline-container-orgf72e5b0" class="outline-2">
+<h2 id="orgf72e5b0"><span class="section-number-2">11.</span> 九,社区 / 讨论区</h2>
+<div class="outline-text-2" id="text-11">
+</div>
+<div id="outline-container-org75da782" class="outline-3">
+<h3 id="org75da782"><span class="section-number-3">11.1.</span> 4PDA</h3>
+<div class="outline-text-3" id="text-11-1">
+<p>
+<a href="https://4pda.to/forum/index.php?showtopic=1117473">4PDA:Motorola G100 / G67 Power (2025)</a><br>
+</p>
+
+<p>
+重点:<br>
+</p>
+<ul class="org-ul">
+<li>XT2533-4 中国版 G100<br></li>
+<li>XT2533-3 / XT2533-5<br></li>
+<li>RETIN / 其他区域 firmware<br></li>
+<li>bootloader / fastboot<br></li>
+<li>Android 16<br></li>
+<li>第三方 recovery / ROM<br></li>
+<li>跨区域刷机讨论<br></li>
+</ul>
+
+<p>
+注意:<br>
+4PDA 帖子中可能混有多个地区,多个软件版本的信息,需要按时间与完整型号阅读.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org231f30f" class="outline-3">
+<h3 id="org231f30f"><span class="section-number-3">11.2.</span> XDA</h3>
+<div class="outline-text-3" id="text-11-2">
+<p>
+建议直接用以下关键词搜索:<br>
+</p>
+<ul class="org-ul">
+<li><a href="https://xdaforums.com/search/?q=portov">XDA 搜索:portov</a><br></li>
+<li><a href="https://xdaforums.com/search/?q=XT2533-4">XDA 搜索:XT2533-4</a><br></li>
+<li><a href="https://xdaforums.com/search/?q=Moto%20G67%20Power">XDA 搜索:Moto G67 Power</a><br></li>
+</ul>
+
+<p>
+注意:<br>
+XDA 中大量旧帖是 2021 年老 Moto G100 / Edge S,不能与 2025 年 <code>portov</code> 混用.<br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-org36d2375" class="outline-2">
+<h2 id="org36d2375"><span class="section-number-2">12.</span> 十,ROM / Recovery 搜索关键词</h2>
+<div class="outline-text-2" id="text-12">
+<pre class="example" id="org71a6bb7">
+"portov" TWRP
+"portov" OrangeFox
+"portov" LineageOS
+"portov" PixelOS
+"portov" crDroid
+"portov" Evolution X
+"XT2533-4" ROM
+"XT2533-4" TWRP
+"XT2533-4" recovery
+"Moto G67 Power" ROM
+"Moto G67 Power" TWRP
+"Moto G100 2025" ROM
+"Moto G100 2025" recovery
+SM7435 Motorola
+</pre>
+</div>
+</div>
+<div id="outline-container-org380f3f5" class="outline-2">
+<h2 id="org380f3f5"><span class="section-number-2">13.</span> 十一,目前值得保留的核心链接</h2>
+<div class="outline-text-2" id="text-13">
+</div>
+<div id="outline-container-org54105bc" class="outline-3">
+<h3 id="org54105bc"><span class="section-number-3">13.1.</span> Device Tree</h3>
+<div class="outline-text-3" id="text-13-1">
+<p>
+<a href="https://github.com/parrot-66-dev/android_device_motorola_portov">Portov Device Tree</a><br>
+</p>
+</div>
+</div>
+<div id="outline-container-org5058380" class="outline-3">
+<h3 id="org5058380"><span class="section-number-3">13.2.</span> Kernel</h3>
+<div class="outline-text-3" id="text-13-2">
+<p>
+<a href="https://github.com/parrot-66-dev/android_device_motorola_portov-kernel">Portov Kernel</a><br>
+</p>
+
+<p>
+<a href="https://github.com/Motorola-Parrot/android_kernel_motorola_sm7435">SM7435 Kernel</a><br>
+</p>
+</div>
+</div>
+<div id="outline-container-org0d55e4a" class="outline-3">
+<h3 id="org0d55e4a"><span class="section-number-3">13.3.</span> Common</h3>
+<div class="outline-text-3" id="text-13-3">
+<p>
+<a href="https://github.com/Motorola-Parrot/android_device_motorola_sm7435-common">SM7435 Common</a><br>
+</p>
+</div>
+</div>
+<div id="outline-container-org125fd18" class="outline-3">
+<h3 id="org125fd18"><span class="section-number-3">13.4.</span> Vendor</h3>
+<div class="outline-text-3" id="text-13-4">
+<p>
+<a href="https://github.com/Quartz750/android_vendor_motorola_portov">Portov Vendor</a><br>
+</p>
+</div>
+</div>
+<div id="outline-container-orgfbc74b1" class="outline-3">
+<h3 id="orgfbc74b1"><span class="section-number-3">13.5.</span> TWRP</h3>
+<div class="outline-text-3" id="text-13-5">
+<p>
+<a href="https://github.com/Quartz750/android_device_motorola_portov_twrp">Portov TWRP Source</a><br>
+</p>
+
+<p>
+<a href="https://github.com/Quartz750/android_device_motorola_portov_twrp/releases/download/notag/recovery.img">TWRP recovery.img</a><br>
+</p>
+</div>
+</div>
+<div id="outline-container-org315e949" class="outline-3">
+<h3 id="org315e949"><span class="section-number-3">13.6.</span> Hello UI ROM</h3>
+<div class="outline-text-3" id="text-13-6">
+<p>
+<a href="https://github.com/cromaguy/Portov-Hello-UI-Port-Project">Hello UI Port Project</a><br>
+</p>
+
+<p>
+<a href="https://pixeldrain.com/u/3tD6dd9Z">Hello UI v1.6 Fastboot Package</a><br>
+</p>
+</div>
+</div>
+<div id="outline-container-orgadeff83" class="outline-3">
+<h3 id="orgadeff83"><span class="section-number-3">13.7.</span> 社区</h3>
+<div class="outline-text-3" id="text-13-7">
+<p>
+<a href="https://4pda.to/forum/index.php?showtopic=1117473">4PDA Moto G100 / G67 Power 2025</a><br>
+</p>
+
+<p>
+<a href="https://xdaforums.com/search/?q=portov">XDA portov 搜索</a><br>
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-org0f19be2" class="outline-2">
+<h2 id="org0f19be2"><span class="section-number-2">14.</span> 十二,建议的研究顺序</h2>
+<div class="outline-text-2" id="text-14">
+<p>
+对于 XT2533-4 / portov,建议按这个顺序研究:<br>
+</p>
+
+<ol class="org-ol">
+<li><a href="https://github.com/parrot-66-dev/android_device_motorola_portov">主 device tree</a><br></li>
+<li><a href="https://github.com/Motorola-Parrot/android_device_motorola_sm7435-common">sm7435-common</a><br></li>
+<li><a href="https://github.com/Motorola-Parrot/android_kernel_motorola_sm7435">SM7435 kernel</a><br></li>
+<li><a href="https://github.com/Quartz750/android_vendor_motorola_portov">Portov vendor</a><br></li>
+<li><a href="https://github.com/Quartz750/android_device_motorola_portov_twrp">TWRP</a><br></li>
+<li><a href="https://github.com/cromaguy/Portov-Hello-UI-Port-Project">Hello UI port</a><br></li>
+<li><a href="https://4pda.to/forum/index.php?showtopic=1117473">4PDA 社区讨论</a><br></li>
+</ol>
+
+<p>
+这样可以先搞清楚:<br>
+<code>device tree -&gt; common -&gt; kernel -&gt; vendor -&gt; recovery -&gt; ROM</code><br>
+</p>
+
+<p>
+而不是一上来只找一个“能刷的 zip”.<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org29bfe6b" class="outline-2">
+<h2 id="org29bfe6b"><span class="section-number-2">15.</span> 十三,风险记录</h2>
+<div class="outline-text-2" id="text-15">
+<p>
+刷机前记录至少以下信息:<br>
+</p>
+
+<pre class="example" id="org97378cc">
+fastboot getvar all
+fastboot getvar current-slot
+fastboot getvar product
+fastboot getvar is-userspace
+fastboot getvar unlocked
+</pre>
+
+<p>
+并保存:<br>
+</p>
+<ul class="org-ul">
+<li>当前 firmware 完整版本号<br></li>
+<li>当前 CID<br></li>
+<li>当前 active slot<br></li>
+<li>当前 ARB / rollback 相关状态<br></li>
+<li>关键分区备份<br></li>
+<li>官方 Motorola Rescue and Smart Assistant(RSA)救砖方案<br></li>
+</ul>
+
+<p>
+严禁:<br>
+</p>
+<ul class="org-ul">
+<li>在第三方 ROM 上重新锁 BL<br></li>
+<li>不核对型号就跨设备刷 boot/vendor_boot/dtbo/vbmeta<br></li>
+<li>不核对 ARB 就强行降级<br></li>
+<li>把 2021 年老 Moto G100 镜像误刷到 2025 年 <code>portov</code><br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgf1d9aad" class="outline-2">
+<h2 id="orgf1d9aad"><span class="section-number-2">16.</span> 十四,截至日期</h2>
+<div class="outline-text-2" id="text-16">
+<p>
+本资源汇总按 2026-09-18 可公开检索到的资料整理.<br>
+</p>
+
+<p>
+其中最明确,最有实际价值的三类成果:<br>
+</p>
+
+<ul class="org-ul">
+<li><code>portov</code> 的 Lineage 风格 device tree / SM7435 kernel / vendor 源码链<br></li>
+<li>portov 专用 TWRP 3.7.1-12 <code>recovery.img</code><br></li>
+<li>portov 的 Hello UI / Android 17 experimental port 及约 5.7 GB Fastboot package<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

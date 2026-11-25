@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>发现路由器无法打开ipv6防火墙导致电脑ipv6能被ping</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-11-25 Wed 21:43</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">发现路由器无法打开ipv6防火墙导致电脑ipv6能被ping</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#orgc2b2d50">1. 背景</a></li>
+<li><a href="#org1179e29">2. 执行</a>
+<ul>
+<li><a href="#org805c2e8">2.1. archlinux(GNU/LINUX)的主流防火墙方案调研</a>
+<ul>
+<li><a href="#org365e91a">2.1.1. UFW vs firewalld</a></li>
+</ul>
+</li>
+<li><a href="#orgabb753a">2.2. 选型结论</a></li>
+<li><a href="#org8706f16">2.3. <span class="done DONE">DONE</span> 安装firewalld并开启ipv6和ipv4防火墙,写基本的配置</a></li>
+</ul>
+</li>
+<li><a href="#org9d3efc9">3. 小结</a></li>
+<li><a href="#orgafc5ca1">4. 联想:之前折腾archlinux旁路由的问题现在就能用firewalld+clashverger rev(配置mihomo为allow-lan)解决了!!</a></li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-orgc2b2d50" class="outline-2">
+<h2 id="orgc2b2d50"><span class="section-number-2">1.</span> 背景</h2>
+<div class="outline-text-2" id="text-1">
+<ul class="org-ul">
+<li>今天折腾<a href="20260910145342-因为rsync局域网传输文件极慢而折腾路由器的经历.html#ID-88efa5c3-8d9a-43ac-862a-5160fdb29022">因为rsync局域网传输文件极慢而折腾路由器的经历</a>时,发现路由器无法<br>
+打开ipv6防火墙导致电脑的ipv6能被外网设备直接ping,终于决定给电脑安装防火墙<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org1179e29" class="outline-2">
+<h2 id="org1179e29"><span class="section-number-2">2.</span> 执行</h2>
+<div class="outline-text-2" id="text-2">
+</div>
+<div id="outline-container-org805c2e8" class="outline-3">
+<h3 id="org805c2e8"><span class="section-number-3">2.1.</span> archlinux(GNU/LINUX)的主流防火墙方案调研</h3>
+<div class="outline-text-3" id="text-2-1">
+</div>
+<div id="outline-container-org365e91a" class="outline-4">
+<h4 id="org365e91a"><span class="section-number-4">2.1.1.</span> UFW vs firewalld</h4>
+<div class="outline-text-4" id="text-2-1-1">
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<tbody>
+<tr>
+<td class="org-left">&nbsp;</td>
+<td class="org-left">UFW</td>
+<td class="org-left">firewalld</td>
+</tr>
+
+<tr>
+<td class="org-left">----</td>
+<td class="org-left">------</td>
+<td class="org-left">--------------</td>
+</tr>
+
+<tr>
+<td class="org-left">特点</td>
+<td class="org-left">简单</td>
+<td class="org-left">灵活</td>
+</tr>
+
+<tr>
+<td class="org-left">管理方式</td>
+<td class="org-left">直接配置规则</td>
+<td class="org-left">zone / service</td>
+</tr>
+
+<tr>
+<td class="org-left">适合</td>
+<td class="org-left">简单服务器</td>
+<td class="org-left">桌面、多网络、复杂场景</td>
+</tr>
+
+<tr>
+<td class="org-left">学习成本</td>
+<td class="org-left">低</td>
+<td class="org-left">中</td>
+</tr>
+</tbody>
+</table>
+</div>
+<ol class="org-ol">
+<li><a id="orgd2696d5"></a>UFW<br>
+<div class="outline-text-5" id="text-2-1-1-1">
+<p>
+简单易用，适合只需要开放几个端口的机器。<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">sudo</span> ufw allow 22/tcp
+<span style="color: #d09dc0;">sudo</span> ufw enable
+</code></pre>
+</div>
+</div>
+</li>
+<li><a id="org1704e2b"></a>firewalld<br>
+<div class="outline-text-5" id="text-2-1-1-2">
+<p>
+使用 zone 管理不同网络，适合桌面、多网卡、VPN、容器等场景。<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">sudo</span> firewall-cmd --get-active-zones
+<span style="color: #d09dc0;">sudo</span> firewall-cmd --zone=home --add-service=samba
+</code></pre>
+</div>
+</div>
+</li>
+<li><a id="org3b9eaaf"></a>推荐<br>
+<div class="outline-text-5" id="text-2-1-1-3">
+<div class="org-src-container">
+<pre class="src src-quote"><code>简单需求：UFW
+复杂网络环境：firewalld
+想学习底层防火墙：nftables
+Arch Linux 桌面机：推荐 firewalld
+</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div id="outline-container-orgabb753a" class="outline-3">
+<h3 id="orgabb753a"><span class="section-number-3">2.2.</span> 选型结论</h3>
+<div class="outline-text-3" id="text-2-2">
+<ul class="org-ul">
+<li>用firewalld:因为我是桌面linux,需要不同场景快速切换防火墙配置,规则比较复杂,<br>
+ufw适合给运行单一固定服务的服务器使用<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org8706f16" class="outline-3">
+<h3 id="org8706f16"><span class="section-number-3">2.3.</span> <span class="done DONE">DONE</span> 安装firewalld并开启ipv6和ipv4防火墙,写基本的配置</h3>
+</div>
+</div>
+<div id="outline-container-org9d3efc9" class="outline-2">
+<h2 id="org9d3efc9"><span class="section-number-2">3.</span> 小结</h2>
+<div class="outline-text-2" id="text-3">
+<ul class="org-ul">
+<li>firewalld重点小知识<br>
+<ul class="org-ul">
+<li>zone:一个配置文件,常与interface绑定<br></li>
+<li>interface:一个接口设备(loop设备,tun设备或者有线网卡和无线网卡,或docker产生的虚拟网卡)<br>
+常通过绑定zone于是选择配置(zone就像是一套预设配置,可以快速切换,比如有"home"zone,"trusted"zone.<br>
+以及"public"zone;区分不同场景)<br></li>
+<li>rich-rule:绑定zone<br></li>
+</ul></li>
+<li><p>
+目前的操作<br>
+以下是目前被激活的zones<br>
+注意Meta这个tun设备默认绑定trusted zone,所有流量放行,<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-shell"><code><span style="color: #4ae2f0;">shyweeds</span><span style="color: #d09dc0;">@archlinux</span> ~&gt; sudo firewall-cmd --get-active-zones
+<span style="color: #d09dc0;">home</span>
+  <span style="color: #d09dc0;">interfaces:</span> enp1s0 wlp2s0
+<span style="color: #d09dc0;">trusted</span>
+  <span style="color: #d09dc0;">interfaces:</span> Meta
+<span style="color: #d09dc0;">public</span> (<span style="color: #d09dc0;">default</span>)
+</code></pre>
+</div>
+<p>
+以下是我对home这个zone的修改,<br>
+home这个zone未匹配的流量全部REJECT,<br>
+注意其中的dhcpv6-client作用是给我的ipv6动态ip地址的分配提供支持,<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-shell"><code><span style="color: #4ae2f0;">shyweeds</span><span style="color: #d09dc0;">@archlinux</span> ~&gt; sudo firewall-cmd --zone=home --list-all
+<span style="color: #d09dc0;">home</span> (<span style="color: #d09dc0;">active</span>)
+  <span style="color: #d09dc0;">target:</span> %%REJECT%%
+  <span style="color: #d09dc0;">ingress-priority:</span> 0
+  <span style="color: #d09dc0;">egress-priority:</span> 0
+  <span style="color: #d09dc0;">icmp-block-inversion:</span> no
+  <span style="color: #d09dc0;">interfaces:</span> enp1s0 wlp2s0
+  <span style="color: #d09dc0;">sources:</span>
+  <span style="color: #d09dc0;">services:</span> dhcpv6-client
+  <span style="color: #d09dc0;">ports:</span>
+  <span style="color: #d09dc0;">protocols:</span>
+  <span style="color: #d09dc0;">forward:</span> yes
+  <span style="color: #d09dc0;">masquerade:</span> no
+  <span style="color: #d09dc0;">forward-ports:</span>
+  <span style="color: #d09dc0;">source-ports:</span>
+  <span style="color: #d09dc0;">icmp-blocks:</span>
+  <span style="color: #d09dc0;">rich</span> rules:
+  <span style="color: #d09dc0;">rule</span> family=<span style="color: #2fafff;">"ipv4"</span> source address=<span style="color: #2fafff;">"192.168.1.0/24"</span> service name=<span style="color: #2fafff;">"ssh"</span> accept
+</code></pre>
+</div></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgafc5ca1" class="outline-2">
+<h2 id="orgafc5ca1"><span class="section-number-2">4.</span> 联想:之前折腾archlinux旁路由的问题现在就能用firewalld+clashverger rev(配置mihomo为allow-lan)解决了!!</h2>
+<div class="outline-text-2" id="text-4">
+<ul class="org-ul">
+<li>参考文章链接:<a href="20260813160546-archlinux的旁路由配置.html#ID-d609461c-c718-47e9-b41b-6aa49a91e362">archlinux的旁路由配置</a><br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

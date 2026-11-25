@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>关于娱乐编程选题的哲学的思考</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-11-25 Wed 21:38</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">关于娱乐编程选题的哲学的思考</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#org082285c">1. 断言</a></li>
+<li><a href="#orgf3f26e5">2. 依赖(dependencies)</a></li>
+<li><a href="#orgb3e7266">3. 动力(motivation)</a></li>
+<li><a href="#org4afe04e">4. 哲学(philosophy)</a></li>
+<li><a href="#orgb30965f">5. 如何模仿(?)</a></li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-org082285c" class="outline-2">
+<h2 id="org082285c"><span class="section-number-2">1.</span> 断言</h2>
+<div class="outline-text-2" id="text-1">
+<ul class="org-ul">
+<li>用重型框架或者大量大型库就是a piece of shit(全是胶水代码,无精华)!!!!多学学Tsoding的哲学作风<br></li>
+<li>避免ai直接介入文件代码操作(ai严格当作一个高级的搜索引擎来用)的娱乐编程才算好项目,否则都是低价值的胶水垃圾<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgf3f26e5" class="outline-2">
+<h2 id="orgf3f26e5"><span class="section-number-2">2.</span> 依赖(dependencies)</h2>
+<div class="outline-text-2" id="text-2">
+<ul class="org-ul">
+<li><code>学习语言本身</code>:通过手写实现常见功能(解析,网络,图形等),深入了解标准库的能力和限制.<br></li>
+<li><code>挑战只依赖标准库甚至无标准库</code>:挑战用极低的依赖,不用第三方库文件,自己造轮子去实现.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgb3e7266" class="outline-2">
+<h2 id="orgb3e7266"><span class="section-number-2">3.</span> 动力(motivation)</h2>
+<div class="outline-text-2" id="text-3">
+<ul class="org-ul">
+<li><code>技术驱动</code>:选题往往围绕语言特性或新技术(如编译时求值,并发模型,低层系统调用)展开,<br>
+目的是"用语言本身完成本来需要库才能做的事".<br></li>
+<li><code>挑战性</code>:经常挑选 "不使用任何库" 的挑战(例如自己实现 PNG 编码,软件渲染管线<br>
+,微型操作系统?),以激发创造力和解决问题的思路.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org4afe04e" class="outline-2">
+<h2 id="org4afe04e"><span class="section-number-2">4.</span> 哲学(philosophy)</h2>
+<div class="outline-text-2" id="text-4">
+<ul class="org-ul">
+<li><code>保持可移植性</code>:尽量只用标准库,因为标准库随编译器一起发布,几乎在所有平台上都有相同行为,代码无需额外的第三方包管理.<br></li>
+<li><code>教育意义</code>:他倾向于制作 <b>教学型</b> 内容——代码既是作品也是学习材料,观众可以直接阅读源码并理解实现细节.<br></li>
+<li><code>降低维护成本</code>:"不使用任何库",没有外部依赖意味着不必担心依赖的安全漏洞,版本冲突或停更问题.<br></li>
+<li><code>代码即文档</code>:基本不会用文档,因为代码即是最好的"文档",文档会过期,而代码永远不会.<br></li>
+<li><code>简洁可复现</code>:项目规模通常保持在几千行代码以内,便于在直播或视频中完整展示,观众可以在短时间内跑通并改进.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgb30965f" class="outline-2">
+<h2 id="orgb30965f"><span class="section-number-2">5.</span> 如何模仿(?)</h2>
+<div class="outline-text-2" id="text-5">
+<ul class="org-ul">
+<li><code>选择语言并只使用标准库</code>:先决定要用的语言,阅读官方文档,确认所有需求(文件 IO,网络,图形)都有标准库支持.<br></li>
+<li><code>确定一个"数学性中高"的"偏底层"的"技术点"</code>:比如"用 Rust 标准库实现一个软件光栅化器"或"用 C++20 coroutine 编写一个简易 HTTP 服务器",<br>
+甚至,直接手动尝试实现标准库的部分功能用于研究.<br></li>
+<li><code>设定规模目标</code>:控制代码行数(如 ≤ 2000 行),确保可以在一次直播/教程中完整展示.<br></li>
+<li><code>先做原型</code>:快速实现核心功能,再逐步加入细节(错误处理,配置,可视化)而不引入外部库.<br></li>
+<li><code>记录与分享</code>:像 Tsoding 那样在代码注释,直播解说或视频中解释每个模块的实现原理,方便观众学习.<br></li>
+<li><code>依赖库的特殊情况</code>:一般只依赖单个比如raylib等轻量化库文件专门做高数学逻辑算法(用算法画图,实现画图不是重点时)的图形学研究.<br></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

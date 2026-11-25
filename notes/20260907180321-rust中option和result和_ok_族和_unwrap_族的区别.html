@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>rust中Option和Result和.ok()族和.unwrap()族的区别</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-09-13 Sun 00:10</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">rust中Option和Result和.ok()族和.unwrap()族的区别</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#org9a01619">1. 核心概念</a></li>
+<li><a href="#orgd6d410b">2. 互转方法 (.ok() 族)</a></li>
+<li><a href="#org35bc5ca">3. 拆包方法 (.unwrap() 族)</a></li>
+<li><a href="#org1d2e4d6">4. 整体关系图</a></li>
+<li><a href="#orgf890d8d">5. 使用建议</a></li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-org9a01619" class="outline-2">
+<h2 id="org9a01619"><span class="section-number-2">1.</span> 核心概念</h2>
+<div class="outline-text-2" id="text-1">
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">enum</span> <span style="color: #11c777;">Option</span>&lt;<span style="color: #11c777;">T</span>&gt; {
+    <span style="color: #11c777;">Some</span>(<span style="color: #11c777;">T</span>),
+    <span style="color: #11c777;">None</span>,
+}
+
+<span style="color: #79a8ff;">enum</span> <span style="color: #11c777;">Result</span>&lt;<span style="color: #11c777;">T</span>, <span style="color: #11c777;">E</span>&gt; {
+    <span style="color: #11c777;">Ok</span>(<span style="color: #11c777;">T</span>),
+    <span style="color: #11c777;">Err</span>(<span style="color: #11c777;">E</span>),
+}
+</code></pre>
+</div>
+
+<dl class="org-dl">
+<dt><code>Option&lt;T&gt;</code></dt><dd>表示"有没有值", <code>None</code> 不携带任何原因<br></dd>
+<dt><code>Result&lt;T, E&gt;</code></dt><dd>表示"成功或失败", <code>Err</code> 携带错误信息 <code>E</code><br></dd>
+</dl>
+
+<p>
+一句话:*Option 回答"有没有"，Result 回答"为什么失败"*。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-orgd6d410b" class="outline-2">
+<h2 id="orgd6d410b"><span class="section-number-2">2.</span> 互转方法 (.ok() 族)</h2>
+<div class="outline-text-2" id="text-2">
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">方法</th>
+<th scope="col" class="org-left">方向</th>
+<th scope="col" class="org-left">说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left"><code>Result::ok()</code></td>
+<td class="org-left">Result -&gt; Option&lt;T&gt;</td>
+<td class="org-left">丢弃错误，Err(_) -&gt; None</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>Result::err()</code></td>
+<td class="org-left">Result -&gt; Option&lt;E&gt;</td>
+<td class="org-left">只留错误，Ok(_) -&gt; None</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>Option::ok_or(e)</code></td>
+<td class="org-left">Option -&gt; Result&lt;T,E&gt;</td>
+<td class="org-left">None 时用给定值填错误</td>
+</tr>
+
+<tr>
+<td class="org-left"><code>Option::ok_or_else(f)</code></td>
+<td class="org-left">Option -&gt; Result&lt;T,E&gt;</td>
+<td class="org-left">None 时用闭包惰性生成错误</td>
+</tr>
+</tbody>
+</table>
+
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">o</span>: <span style="color: #11c777;">Option</span>&lt;<span style="color: #11c777;">i32</span>&gt; = <span style="color: #11c777;">Some</span>(<span style="color: #ffffff;">5</span>);
+<span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">r</span>: <span style="color: #11c777;">Result</span>&lt;<span style="color: #11c777;">i32</span>, &amp;<span style="color: #11c777;">str</span>&gt; = o.ok_or(<span style="color: #2fafff;">"&#27809;&#26377;&#20540;"</span>);
+
+<span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">r</span>: <span style="color: #11c777;">Result</span>&lt;<span style="color: #11c777;">i32</span>, <span style="color: #11c777;">String</span>&gt; = <span style="color: #11c777;">Ok</span>(<span style="color: #ffffff;">5</span>);
+<span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">o1</span>: <span style="color: #11c777;">Option</span>&lt;<span style="color: #11c777;">i32</span>&gt; = r.ok();   <span style="color: #ef8386;">// &#20002;&#24323;&#38169;&#35823;&#20449;&#24687;</span>
+<span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">o2</span>: <span style="color: #11c777;">Option</span>&lt;<span style="color: #11c777;">String</span>&gt; = r.err(); <span style="color: #ef8386;">// &#21482;&#35201;&#38169;&#35823;&#20449;&#24687;</span>
+</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org35bc5ca" class="outline-2">
+<h2 id="org35bc5ca"><span class="section-number-2">3.</span> 拆包方法 (.unwrap() 族)</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+两者命名和行为高度对称：<br>
+</p>
+
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">方法</th>
+<th scope="col" class="org-left">Option&lt;T&gt;</th>
+<th scope="col" class="org-left">Result&lt;T,E&gt;</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">失败就 panic</td>
+<td class="org-left"><code>unwrap()</code></td>
+<td class="org-left"><code>unwrap()</code></td>
+</tr>
+
+<tr>
+<td class="org-left">失败 panic 带自定义信息</td>
+<td class="org-left"><code>expect(msg)</code></td>
+<td class="org-left"><code>expect(msg)</code></td>
+</tr>
+
+<tr>
+<td class="org-left">失败返回默认值</td>
+<td class="org-left"><code>unwrap_or(v)</code></td>
+<td class="org-left"><code>unwrap_or(v)</code></td>
+</tr>
+
+<tr>
+<td class="org-left">失败用闭包计算默认值</td>
+<td class="org-left"><code>unwrap_or_else(f)</code></td>
+<td class="org-left"><code>unwrap_or_else(f)</code></td>
+</tr>
+
+<tr>
+<td class="org-left">失败返回 Default::default()</td>
+<td class="org-left"><code>unwrap_or_default()</code></td>
+<td class="org-left"><code>unwrap_or_default()</code></td>
+</tr>
+
+<tr>
+<td class="org-left">反向：成功值 panic（少用）</td>
+<td class="org-left">-</td>
+<td class="org-left"><code>unwrap_err()</code> / <code>expect_err()</code></td>
+</tr>
+</tbody>
+</table>
+
+<p>
+*关键差异*： <code>Result::unwrap()</code> panic 时会打印 <code>E</code> 的 Debug 输出，信息更丰富；<br>
+<code>Option::unwrap()</code> panic 信息固定，无上下文。<br>
+</p>
+</div>
+</div>
+<div id="outline-container-org1d2e4d6" class="outline-2">
+<h2 id="org1d2e4d6"><span class="section-number-2">4.</span> 整体关系图</h2>
+<div class="outline-text-2" id="text-4">
+<pre class="example" id="orge949150">
+         +-------------+        .ok_or(e) / .ok_or_else(f)
+         |  Option&lt;T&gt;  | --------------------------------&gt; Result&lt;T, E&gt;
+         | Some / None | &lt;-------------------------------- Ok / Err
+         +-------------+        .ok()  (丢弃错误)
+               |                .err() (只留错误 -&gt; Option&lt;E&gt;)
+               |
+.unwrap() / .expect() / .unwrap_or() / .unwrap_or_else() / .unwrap_or_default()
+               |
+               v
+            直接拿到 T (或 panic)
+</pre>
+</div>
+</div>
+<div id="outline-container-orgf890d8d" class="outline-2">
+<h2 id="orgf890d8d"><span class="section-number-2">5.</span> 使用建议</h2>
+<div class="outline-text-2" id="text-5">
+<ol class="org-ol">
+<li>需要传递失败原因 -&gt; 用 <code>Result~；只需判断"有没有" -&gt; 用 ~Option</code><br>
+（如 <code>HashMap::get</code>, <code>Vec::first</code> ）。<br></li>
+<li><p>
+<code>?</code> 运算符对两者都适用，可在函数内部链式传播：<br>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-rust"><code><span style="color: #79a8ff;">fn</span> <span style="color: #f78fe7;">parse</span>(<span style="color: #4ae2f0;">s</span>: &amp;<span style="color: #11c777;">str</span>) -&gt; <span style="color: #11c777;">Option</span>&lt;<span style="color: #11c777;">i32</span>&gt; {
+    <span style="color: #79a8ff;">let</span> <span style="color: #4ae2f0;">n</span>: <span style="color: #11c777;">i32</span> = s.parse().ok()?;   <span style="color: #ef8386;">// Result -&gt; Option &#20877;&#29992; ? &#20256;&#25773;</span>
+    <span style="color: #11c777;">Some</span>(n * <span style="color: #ffffff;">2</span>)
+}
+</code></pre>
+</div></li>
+
+<li>生产代码避免裸 <code>.unwrap()</code> ,改用 <code>?</code> 、 <code>unwrap_or_else</code> 、 <code>match</code> ，<br>
+或 <code>anyhow</code> / <code>thiserror</code> 等错误处理库；<br>
+确实不会失败时用 <code>.expect("原因说明")</code> 留下注释。<br></li>
+</ol>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>

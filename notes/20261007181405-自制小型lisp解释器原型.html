@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-25 Wed 21:47 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>自制小型lisp解释器原型</title>
+<meta name="generator" content="Org Mode" />
+<link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+<body>
+<div id="preamble" class="status">
+<nav>
+  <a href="/">&lt; Home</a>
+</nav>
+<div id="updated">Updated: 2026-10-24 Sat 10:09</div>
+</div>
+<div id="content" class="content">
+<header>
+<h1 class="title">自制小型lisp解释器原型</h1>
+</header><nav id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#orgebacccb">1. 总计划方案</a></li>
+<li><a href="#org4c381c4">2. <span class="done DONE">DONE</span> 开始写代码+做好git历史提交记录</a></li>
+<li><a href="#orgb247724">3. 总结</a></li>
+<li><a href="#org31ebb7a">4. Examples</a></li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-orgebacccb" class="outline-2">
+<h2 id="orgebacccb"><span class="section-number-2">1.</span> 总计划方案</h2>
+<div class="outline-text-2" id="text-1">
+<ul class="org-ul">
+<li>follow the <a href="https://github.com/lisering/lisp-rs">lisp_rs教程</a><br></li>
+<li>每完成一步:git做标记(方便最后回溯汇总做分步拆解)<br></li>
+<li>完结后两个方案:<br>
+方案一:(借助ai),用"Motion Canvas/Remotion/Revideo/Manim/MoviePy"生成程序化动画,借助<br>
+git做的标记来生成英文文案+原理拆解动画.<br>
+方案二(备份):手动借助git提交历史来写英文文案+回溯后分步录屏来完成视频创作.<br></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org4c381c4" class="outline-2">
+<h2 id="org4c381c4"><span class="section-number-2">2.</span> <span class="done DONE">DONE</span> 开始写代码+做好git历史提交记录</h2>
+<div class="outline-text-2" id="text-2">
+<ul class="org-ul">
+<li><p>
+parser:<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-scheme"><code>(car '(+ 1 2 3))   <span style="color: #ef8386;">; </span><span style="color: #ef8386;">&#8594; +          "the first one"
+</span>(cdr '(+ 1 2 3))   <span style="color: #ef8386;">; </span><span style="color: #ef8386;">&#8594; (1 2 3)    "the rest"</span>
+</code></pre>
+</div></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgb247724" class="outline-2">
+<h2 id="orgb247724"><span class="section-number-2">3.</span> 总结</h2>
+<div class="outline-text-2" id="text-3">
+<ul class="org-ul">
+<li>介绍<br>
+很早之前就听闻lisp的鼎鼎大名,刚好又遇到一个合适的教程,于是便跟着教程<a href="https://github.com/lisering/lisp-rs">lisp_rs教程</a>做了一下,今天终于完成了;<br>
+教程很好,里面故意挖了很多的坑,反而让我受益匪浅;同时教程强调动手去做,以及鼓励自己去写出符合tests的不一样<br>
+的代码,十分具有学习价值;<br></li>
+
+<li>语法<br>
+参见内部Tests(tests as documents)<br></li>
+<li><p>
+RPEL<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-bash"><code><span style="color: #d09dc0;">cargo</span> run --release
+<span style="color: #d09dc0;">:help</span>
+</code></pre>
+</div></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org31ebb7a" class="outline-2">
+<h2 id="org31ebb7a"><span class="section-number-2">4.</span> Examples</h2>
+<div class="outline-text-2" id="text-4">
+<ul class="org-ul">
+<li><p>
+in RPEL<br>
+</p>
+<div class="org-src-container">
+<pre class="src src-scheme"><code><span style="color: #ef8386;">; </span><span style="color: #ef8386;">============================================================
+</span><span style="color: #ef8386;">;  </span><span style="color: #ef8386;">Lisp-rs feature tour. Paste it all into the REPL.
+</span><span style="color: #ef8386;">; </span><span style="color: #ef8386;">============================================================
+</span>
+<span style="color: #ef8386;">; </span><span style="color: #ef8386;">---------- 1. atoms and literals ----------
+</span>42
+-7
+3.14
+#t
+#f
+nil
+<span style="color: #2fafff;">"hello, lisp"</span>
+<span style="color: #2fafff;">"quote inside: \"ok\""</span>
+'foo
+'(1 2 3)
+'(1 (2 3) <span style="color: #2fafff;">"four"</span> #t nil)
+
+<span style="color: #ef8386;">; </span><span style="color: #ef8386;">---------- 2. math, comparison, strings ----------
+</span>(+ 1 2 3 4)
+(- 10 3 2)
+(- 5)
+(* 2 3 4)
+(/ 100 5 2)
+(/ 4)
+(square 9)
+(= 2 2)
+(&gt; 3 2)
+(&gt;= 3 3)
+(&lt; 2 3)
+(&lt;= 3 3)
+(not #f)
+(not 0)
+(string-length <span style="color: #2fafff;">"hello"</span>)
+
+<span style="color: #ef8386;">; </span><span style="color: #ef8386;">---------- 3. define, set!, begin ----------
+</span>(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">x</span> 10)
+(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">y</span> 32)
+x
+(+ x y)
+(set! x 99)
+x
+(<span style="color: #79a8ff;">begin</span>
+  (display 'begin-demo)
+  (newline)
+  'begin-done)
+(<span style="color: #79a8ff;">begin</span>)
+
+<span style="color: #ef8386;">; </span><span style="color: #ef8386;">---------- 4. if, and, or, cond ----------
+</span>(<span style="color: #79a8ff;">if</span> (&gt; x 50) 'big 'small)
+(<span style="color: #79a8ff;">if</span> #f 1 2)
+(<span style="color: #79a8ff;">if</span> 0 'truthy 'falsey)
+(<span style="color: #79a8ff;">if</span> nil 'truthy 'falsey)
+(<span style="color: #79a8ff;">if</span> '() 'truthy 'falsey)
+(<span style="color: #79a8ff;">and</span> #t 1 2)
+(<span style="color: #79a8ff;">and</span> #t #f 2)
+(<span style="color: #79a8ff;">and</span>)
+(<span style="color: #79a8ff;">or</span> #f nil 7)
+(<span style="color: #79a8ff;">or</span> #f #f)
+(<span style="color: #79a8ff;">or</span>)
+(<span style="color: #79a8ff;">cond</span>
+  ((&lt; x 0) 'negative)
+  ((= x 0) 'zero)
+  (<span style="color: #79a8ff;">else</span> 'positive))
+(<span style="color: #79a8ff;">cond</span> ((&gt; x 1000) 'never))
+(<span style="color: #79a8ff;">cond</span>
+  ((= x 99)
+   (display 'cond-multi-body)
+   (newline)
+   'matched))
+
+<span style="color: #ef8386;">; </span><span style="color: #ef8386;">---------- 5. lambda, closures, extra args, recursion, tail calls ----------
+</span>(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">add</span> (<span style="color: #79a8ff;">lambda</span> (a b) (+ a b)))
+(add 3 4)
+(add 10 20)
+((<span style="color: #79a8ff;">lambda</span> (a b) (+ a b)) 10 20)
+((<span style="color: #79a8ff;">lambda</span> (a b) (+ a b)) 1 2)
+
+<span style="color: #ef8386;">; </span><span style="color: #ef8386;">make a closure with a top-level let
+</span>(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">add5</span> (<span style="color: #79a8ff;">let</span> ((n 5)) (<span style="color: #79a8ff;">lambda</span> (m) (+ m n))))
+(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">closure-a</span> (add5 37))
+(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">closure-b</span> (add5 40))
+(list closure-a closure-b)
+
+<span style="color: #ef8386;">; </span><span style="color: #ef8386;">a closure can keep state. set! changes that state.
+</span>(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">counter</span>
+  (<span style="color: #79a8ff;">let</span> ((n 0))
+    (<span style="color: #79a8ff;">lambda</span> ()
+      (<span style="color: #79a8ff;">begin</span>
+        (set! n (+ n 1))
+        n))))
+(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">c1</span> (counter))
+(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">c2</span> (counter))
+(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">c3</span> (counter))
+(list c1 c2 c3)
+
+<span style="color: #ef8386;">; </span><span style="color: #ef8386;">functions can take a function or return a function
+</span>(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">compose</span> (<span style="color: #79a8ff;">lambda</span> (f g) (<span style="color: #79a8ff;">lambda</span> (z) (f (g z)))))
+(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">inc</span> (<span style="color: #79a8ff;">lambda</span> (z) (+ z 1)))
+(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">double</span> (<span style="color: #79a8ff;">lambda</span> (z) (* z 2)))
+(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">composed</span> ((compose inc double) 20))
+composed
+(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">twice-fn</span> (<span style="color: #79a8ff;">lambda</span> (f x) (f (f x))))
+(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">twice-result</span> (twice-fn inc 5))
+twice-result
+
+<span style="color: #ef8386;">; </span><span style="color: #ef8386;">a lambda can take extra arguments
+</span>(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">sum-rest</span> (<span style="color: #79a8ff;">lambda</span> (a . rest) (+ a (apply + rest))))
+(sum-rest 1 2 3 4)
+
+<span style="color: #ef8386;">; </span><span style="color: #ef8386;">normal recursion
+</span>(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">fact</span> (<span style="color: #79a8ff;">lambda</span> (n) (<span style="color: #79a8ff;">if</span> (= n 0) 1 (* n (fact (- n 1))))))
+(fact 5)
+(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">sum-to</span> (<span style="color: #79a8ff;">lambda</span> (n) (<span style="color: #79a8ff;">if</span> (= n 1) 1 (+ n (sum-to (- n 1))))))
+(sum-to 10)
+
+<span style="color: #ef8386;">; </span><span style="color: #ef8386;">tail recursion: 10000 calls are safe
+</span>(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">count-down</span> (<span style="color: #79a8ff;">lambda</span> (n) (<span style="color: #79a8ff;">if</span> (= n 0) 'done (count-down (- n 1)))))
+(count-down 10000)
+
+<span style="color: #ef8386;">; </span><span style="color: #ef8386;">---------- 6. let, let*, letrec ----------
+</span>(<span style="color: #79a8ff;">let</span> ((a 2) (b 3)) (+ a b))
+(<span style="color: #79a8ff;">let</span> () 42)
+(<span style="color: #79a8ff;">let</span> ((a 1) (b 2))
+  (display 'let-multi-body)
+  (newline)
+  (* a b))
+(<span style="color: #79a8ff;">let</span> ((a 10))
+  (<span style="color: #79a8ff;">let</span> ((a 1) (b a)) b))
+(<span style="color: #79a8ff;">let*</span> ((a 1) (b (+ a 1)) (c (+ b 1))) c)
+(<span style="color: #79a8ff;">letrec</span> ((even? (<span style="color: #79a8ff;">lambda</span> (n) (<span style="color: #79a8ff;">if</span> (= n 0) #t (odd? (- n 1)))))
+         (odd?  (<span style="color: #79a8ff;">lambda</span> (n) (<span style="color: #79a8ff;">if</span> (= n 0) #f (even? (- n 1))))))
+  (even? 10))
+
+<span style="color: #ef8386;">; </span><span style="color: #ef8386;">---------- 7. quote, quasiquote, macros ----------
+</span>(quote foo)
+'foo
+(quote (a b))
+`42
+(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">who</span> <span style="color: #2fafff;">"lisp"</span>)
+(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">xs</span> (list 1 2 3))
+`(hello ,who ,@xs (tail))
+(defmacro when (condition . body)
+  `(<span style="color: #79a8ff;">if</span> ,condition (<span style="color: #79a8ff;">begin</span> ,@body) nil))
+(<span style="color: #79a8ff;">when</span> #t
+  (display 'when-macro)
+  (newline)
+  42)
+(<span style="color: #79a8ff;">when</span> #f (display 'never-printed))
+(defmacro unless (condition . body)
+  `(<span style="color: #79a8ff;">if</span> ,condition nil (<span style="color: #79a8ff;">begin</span> ,@body)))
+(<span style="color: #79a8ff;">unless</span> #f (display 'unless-macro) (newline) 'ok)
+(<span style="color: #79a8ff;">unless</span> #t (display 'never-printed))
+
+<span style="color: #ef8386;">; </span><span style="color: #ef8386;">gensym stops a macro from capturing a user variable
+</span>(defmacro swap! (a b)
+  (<span style="color: #79a8ff;">let</span> ((t (gensym <span style="color: #2fafff;">"swap"</span>)))
+    `(<span style="color: #79a8ff;">let</span> ((,t ,a))
+       (set! ,a ,b)
+       (set! ,b ,t))))
+(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">u</span> 1)
+(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">v</span> 2)
+(<span style="color: #79a8ff;">define</span> <span style="color: #f78fe7;">t</span> 999)
+(swap! u v)
+(list u v t)
+(gensym)
+(gensym <span style="color: #2fafff;">"tmp"</span>)
+
+<span style="color: #ef8386;">; </span><span style="color: #ef8386;">---------- 8. lists and functions that take functions ----------
+</span>(list 1 2 3)
+(cons 0 (list 1 2 3))
+(cons 'only nil)
+(car (list 1 2 3))
+(cdr (list 1 2 3))
+(cadr (list 1 2 3))
+(caddr (list 1 2 3))
+(append (list 1 2) (list 3 4))
+(append nil (list 1))
+(length (list 1 2 3))
+(length nil)
+(reverse (list 1 2 3))
+(reverse nil)
+(member 2 (list 1 2 3))
+(member 9 (list 1 2 3))
+(<span style="color: #79a8ff;">map</span> square (list 1 2 3 4))
+(<span style="color: #79a8ff;">map</span> (<span style="color: #79a8ff;">lambda</span> (n) (* n 10)) (list 1 2 3))
+(filter (<span style="color: #79a8ff;">lambda</span> (n) (&gt; n 0)) (list -3 -1 0 2 5))
+(apply + (list 1 2 3 4))
+(apply (<span style="color: #79a8ff;">lambda</span> (a b) (+ a b)) (list 10 20))
+
+<span style="color: #ef8386;">; </span><span style="color: #ef8386;">---------- 9. type checks ----------
+</span>(null? nil)
+(null? (list))
+(null? 0)
+(number? 42)
+(symbol? 'foo)
+(boolean? #f)
+(string? <span style="color: #2fafff;">"hi"</span>)
+(procedure? add)
+(procedure? +)
+(pair? (list 1))
+(pair? nil)
+(list? nil)
+(list? (list 1 2))
+(eq? 'a 'a)
+(equal? (list 1 (list 2 3)) (list 1 (list 2 3)))
+
+<span style="color: #ef8386;">; </span><span style="color: #ef8386;">---------- 10. output ----------
+</span>(<span style="color: #79a8ff;">begin</span>
+  (display 'display-demo)
+  (display '-&gt;)
+  (display (list 1 2 'three <span style="color: #2fafff;">"four"</span> #t nil))
+  (newline)
+  (display 'all-features-done)
+  (newline)
+  'ok)
+
+<span style="color: #ef8386;">; </span><span style="color: #ef8386;">---------- 11. optional: error and input ----------
+</span><span style="color: #ef8386;">; </span><span style="color: #ef8386;">the next two lines are comments by default
+</span><span style="color: #ef8386;">; </span><span style="color: #ef8386;">remove the leading semicolon to test error and read
+</span><span style="color: #ef8386;">; </span><span style="color: #ef8386;">(error "intentional error")
+</span><span style="color: #ef8386;">; </span><span style="color: #ef8386;">(read)</span>
+</code></pre>
+</div></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<hr/>
+<footer>
+  <div class="copyright-container">
+    <div class="copyright">
+      Copyright &copy; 2025-2026 Tinyblinker some rights reserved<br/>
+      Content is available under
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        CC-BY-SA 4.0
+      </a> unless otherwise noted
+    </div>
+    <div class="cc-badge">
+      <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+      </a>
+    </div>
+  </div>
+  <div class="generated">
+    Created with <a href="https://www.gnu.org/software/emacs/">Emacs</a> 31.1 (<a href="https://orgmode.org">Org</a> mode 9.8.7) on <a href="https://www.gnu.org">GNU</a>/<a href="https://www.kernel.org">Linux</a>
+  </div>
+</footer>
+</div>
+</body>
+</html>
